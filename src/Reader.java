@@ -31,21 +31,20 @@ public class Reader {
         try {
             this.br = new BufferedReader(new FileReader(filename));
         } catch (FileNotFoundException e) {
-            System.out.println(e);
+            e.printStackTrace();
         }
     }
 
     /**
      * Read a new line of the file and assign it to buf.
      * @return true if reading succeeds, or false if reaches the end of file.
-     * @throws IOException
      */
     public boolean readNextLine() {
         String s = null;
         try {
             s = br.readLine();
         } catch (IOException e) {
-            System.out.println(e);
+            e.printStackTrace();
         }
         if (s != null) {
             buf = s.toCharArray();
@@ -58,7 +57,6 @@ public class Reader {
 
     /**
      * Read next char in buffer.
-     * @return true if succeeds or false if finishes.
      */
     public void readChar() {
         if (bp < len) {

@@ -21,7 +21,13 @@ public class Scanner {
 
     public void nextToken() {
         prevToken = token;
-        token = tokens.remove(0);
+        if (!tokens.isEmpty()) token = tokens.remove(0);
+    }
+
+    public Tokens.Token lookAheadToken(int pos) {
+        if (tokens.size() > pos) {
+            return tokens.get(pos);
+        } else return null;
     }
 
     public Tokens.Token getToken() { return token; }

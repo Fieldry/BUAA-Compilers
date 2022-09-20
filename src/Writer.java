@@ -4,38 +4,59 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class Writer {
-    /** A list of all tokens.
-     */
-    ArrayList<Tokens.Token> tokens;
 
     /** The file to output.
      */
     String filename;
     BufferedWriter bw;
 
-    public Writer(String filename, ArrayList<Tokens.Token> tokens) {
-        this.tokens = tokens;
-
+    public Writer(String filename) {
         this.filename = filename;
         try {
             this.bw = new BufferedWriter(new FileWriter(filename));
         } catch (IOException e) {
-            System.out.println(e);
+            e.printStackTrace();
         }
     }
 
-    public void writeToken() {
+    public void writeToken(Tokens.Token token) {
+        try {
+            bw.write(token.tokenKind.code + " "
+                    + (token.value != null ? token.value : token.tokenKind.name) + "\n");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void writeTokens(List<Tokens.Token> tokens) {
         try {
             for (Tokens.Token token : tokens) {
-                bw.write(token.tokenKind.code + " "
-                        + (token.value != null ? token.value : token.tokenKind.name) + "\n");
+                writeToken(token);
             }
             bw.flush();
             bw.close();
         } catch (IOException e) {
-            System.out.println(e);
+            e.printStackTrace();
+        }
+    }
+
+    public void close() {
+        try {
+            bw.flush();
+            bw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void write(String string) {
+        try {
+            bw.write(string + "\n");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

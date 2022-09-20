@@ -1,6 +1,8 @@
 package tree;
 
 import token.Tokens.*;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -10,50 +12,39 @@ import java.util.List;
 
 public class SysYTree {
     public static class SysYCompilationUnit extends SysYTree {
-        List<? extends SysYTree> decls;
+        List<SysYDecl> decls;
         List<SysYFuncDef> funcDefs;
         SysYMainFuncDef mainFuncDef;
 
-        public SysYCompilationUnit(List<? extends SysYTree> decls,
+        public SysYCompilationUnit() {
+            decls = new ArrayList<>();
+            funcDefs = new ArrayList<>();
+            mainFuncDef = null;
+        }
+
+        public SysYCompilationUnit(List<SysYDecl> decls,
                                    List<SysYFuncDef> funcDefs, SysYMainFuncDef mainFuncDef) {
             this.decls = decls;
             this.funcDefs = funcDefs;
             this.mainFuncDef = mainFuncDef;
         }
+
+        public void addDecl(SysYDecl decl) { decls.add(decl); }
+        public void addFuncDef(SysYFuncDef funcDef) { funcDefs.add(funcDef); }
+        public void setMainFuncDef(SysYMainFuncDef mainFuncDef) { this.mainFuncDef = mainFuncDef; }
     }
 
-    public static class SysYDecl extends SysYTree {
+    /** Base class for statements. */
+    public static class SysYStatement extends SysYTree {}
+
+    /** Var declaration including const var and var. */
+    public static class SysYDecl extends SysYStatement {
         public boolean isConst;
-        public SysYExpression ident;
-        public int dimensions;
-        public SysYExpression firstExp;
-        public SysYExpression secondExp;
-        public SysYExpression init;
+        List<SysYDef> defs;
 
-        public SysYDecl(boolean isConst, SysYExpression ident, int dimensions, SysYExpression init) {
+        public SysYDecl(boolean isConst, List<SysYDef> defs) {
             this.isConst = isConst;
-            this.ident = ident;
-            this.dimensions = dimensions;
-            this.init = init;
-        }
-
-        public SysYDecl(boolean isConst, SysYExpression ident, int dimensions,
-                        SysYExpression firstExp, SysYExpression init) {
-            this.isConst = isConst;
-            this.ident = ident;
-            this.dimensions = dimensions;
-            this.firstExp = firstExp;
-            this.init = init;
-        }
-
-        public SysYDecl(boolean isConst, SysYExpression ident, int dimensions,
-                        SysYExpression firstExp, SysYExpression secondExp, SysYExpression init) {
-            this.isConst = isConst;
-            this.ident = ident;
-            this.dimensions = dimensions;
-            this.firstExp = firstExp;
-            this.secondExp = secondExp;
-            this.init = init;
+            this.defs = defs;
         }
     }
 
@@ -65,22 +56,6 @@ public class SysYTree {
         public SysYExpression secondExp;
         public SysYExpression init;
 
-        public SysYDef(boolean isConst, SysYExpression ident, int dimensions, SysYExpression init) {
-            this.isConst = isConst;
-            this.ident = ident;
-            this.dimensions = dimensions;
-            this.init = init;
-        }
-
-        public SysYDef(boolean isConst, SysYExpression ident, int dimensions,
-                        SysYExpression firstExp, SysYExpression init) {
-            this.isConst = isConst;
-            this.ident = ident;
-            this.dimensions = dimensions;
-            this.firstExp = firstExp;
-            this.init = init;
-        }
-
         public SysYDef(boolean isConst, SysYExpression ident, int dimensions,
                         SysYExpression firstExp, SysYExpression secondExp, SysYExpression init) {
             this.isConst = isConst;
@@ -90,37 +65,19 @@ public class SysYTree {
             this.secondExp = secondExp;
             this.init = init;
         }
-
     }
 
-    public static class SysYInit {
+    public static class SysYInit extends SysYExpression {
         public boolean isConst;
-        public int dimensions;
-        public SysYExpression expression;
-        public List<? extends SysYExpression> firstExp;
-        public List<? extends SysYExpression> secondExp;
+        public List<SysYExpression> expression;
 
-        public SysYInit(boolean isConst, int dimensions, SysYExpression expression) {
+        public SysYInit(boolean isConst, List<SysYExpression> expression) {
             this.isConst = isConst;
-            this.dimensions = dimensions;
             this.expression = expression;
         }
-
-        public SysYInit(boolean isConst, int dimensions, List<? extends SysYExpression> firstExp) {
-            this.isConst = isConst;
-            this.dimensions = dimensions;
-            this.firstExp = firstExp;
-        }
-
-        public SysYInit(boolean isConst, int dimensions, List<? extends SysYExpression> firstExp,
-                        List<? extends SysYExpression> secondExp) {
-            this.isConst = isConst;
-            this.dimensions = dimensions;
-            this.firstExp = firstExp;
-            this.secondExp = secondExp;
-        }
     }
 
+    /** Function definitions including void and int. */
     public static class SysYFuncDef {
         public SysYExpression funcType;
         public SysYExpression ident;
@@ -161,14 +118,46 @@ public class SysYTree {
         }
     }
 
-    public static class SysYStatement extends SysYTree {}
-
     public static class SysYStmt extends SysYStatement {
         public SysYStatement statement;
 
         public SysYStmt(SysYStatement statement) {
             this.statement = statement;
         }
+    }
+
+    public static class SysYAssign extends SysYStatement {
+        public SysYExpression lVal;
+        public SysYExpression expression;
+        public SysYStatement getint;
+
+        public SysYAssign(SysYExpression lVal, SysYStatement getint) {
+            this.lVal = lVal;
+            this.getint = getint;
+        }
+
+        public SysYAssign(SysYExpression lVal, SysYExpression expression) {
+            this.lVal = lVal;
+            this.expression = expression;
+        }
+
+        public SysYExpression getLVal() {
+            return lVal;
+        }
+
+        public SysYExpression getExpression() {
+            return expression;
+        }
+    }
+
+    public static class SysYBlock extends SysYStatement {
+        public List<SysYStatement> block;
+
+        public SysYBlock() { this.block = new ArrayList<>(); }
+
+        public SysYBlock(List<SysYStatement> block) { this.block = block; }
+
+        public List<SysYStatement> getBlock() { return block; }
     }
 
     public static class SysYIf extends SysYStatement {
@@ -213,8 +202,6 @@ public class SysYTree {
         }
     }
 
-    public static class SysYBlock extends SysYStatement {}
-
     public static class SysYExpressionStatement extends SysYStatement {
         public SysYExpression exp;
         public boolean isEmpty;
@@ -253,6 +240,21 @@ public class SysYTree {
         }
     }
 
+    public static class SysYGetInt extends SysYStatement {
+
+    }
+
+    public static class SysYPrintf extends SysYStatement {
+        public String format;
+        public List<SysYExpression> exps;
+
+        public SysYPrintf(String format, List<SysYExpression> exps) {
+            this.format = format;
+            this.exps = exps;
+        }
+    }
+
+    /** Base class for expressions. */
     public static class SysYExpression extends SysYTree {}
 
     public static class SysYLiteral extends SysYExpression {
@@ -350,38 +352,26 @@ public class SysYTree {
         }
     }
 
-    public static class SysYAssign extends SysYExpression {
-        public SysYExpression lVal;
-        public SysYExpression expression;
+    public static class SysYUnaryExp extends SysYExpression {
+        public SysYExpression primaryExp;
+        public SysYExpression ident;
+        public List<SysYExpression> funcRParams;
+        public Token unaryOp;
+        public SysYExpression unaryExp;
 
-        public SysYAssign(SysYExpression lVal, SysYExpression expression) {
-            this.lVal = lVal;
-            this.expression = expression;
+        public SysYUnaryExp(SysYExpression primaryExp) {
+            this.primaryExp = primaryExp;
         }
 
-        public SysYExpression getLVal() {
-            return lVal;
+        public SysYUnaryExp(SysYExpression ident, List<SysYExpression> funcParams) {
+            this.ident = ident;
+            this.funcRParams = funcParams;
         }
 
-        public SysYExpression getExpression() {
-            return expression;
+        public SysYUnaryExp(Token unaryOp, SysYExpression unaryExp) {
+            this.unaryOp = unaryOp;
+            this.unaryExp = unaryExp;
         }
-    }
-
-    public static class SysYUnary extends SysYExpression {
-        public Token token;
-        public SysYExpression expression;
-
-        public SysYUnary(Token token, SysYExpression expression) {
-            this.token = token;
-            this.expression = expression;
-        }
-
-        public SysYExpression getExpression() {
-            return expression;
-        }
-
-        public Token getToken() { return token; }
     }
 
     public static class SysYMulExp extends SysYExpression {

@@ -111,6 +111,11 @@ public class Tokens {
             this.line = line;
             this.value = value;
         }
+
+        @Override
+        public String toString() {
+            return this.tokenKind.code + " " + (value == null ? "" : value);
+        }
     }
 
     public TokenKind lookupKeywords(String name) {
