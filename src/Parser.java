@@ -706,7 +706,7 @@ public class Parser {
     public SysYExpression cond() {
         SysYExpression cond = lOrExp();
         printTree("<Cond>");
-        return new SysYCond(lOrExp());
+        return new SysYCond(cond);
     }
 
     public SysYExpression constExp() {
