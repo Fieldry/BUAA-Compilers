@@ -1,4 +1,5 @@
 import token.Tokens;
+import tree.SysYTree.*;
 
 public class Compiler {
     public static Reader reader;
@@ -16,7 +17,7 @@ public class Compiler {
         tokenizer = new Tokenizer(tokens, reader, scanner);
         tokenizer.tokenAnalyse();
         parser = new Parser(scanner, writer, true);
-        parser.syntaxAnalyse();
+        SysYCompilationUnit compUnit = parser.syntaxAnalyse();
         writer.close();
     }
 }
