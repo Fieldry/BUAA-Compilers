@@ -1,3 +1,4 @@
+import exception.SysYException;
 import token.Tokens;
 import tree.SysYTree.*;
 
@@ -11,13 +12,21 @@ public class Compiler {
     public static Scanner scanner = new Scanner();
 
     public static void main(String[] args) {
-        String input = "testfile.txt", output = "output.txt";
+        String input = "testfile.txt", output = "output.txt", error = "error.txt";
         reader = new Reader(input);
-        writer = new Writer(output);
+        writer = new Writer(output, error);
         tokenizer = new Tokenizer(tokens, reader, scanner);
-        tokenizer.tokenAnalyse();
+        try {
+            tokenizer.tokenAnalyse();
+        } catch (SysYException e) {
+            e.printStackTrace();
+        }
         parser = new Parser(scanner, writer, true);
-        SysYCompilationUnit compUnit = parser.syntaxAnalyse();
+        try {
+            SysYCompilationUnit compUnit = parser.syntaxAnalyse();
+        } catch (SysYException e) {
+            e.printStackTrace();
+        }
         writer.close();
     }
 }

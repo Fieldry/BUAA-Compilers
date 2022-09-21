@@ -1,3 +1,5 @@
+import exception.SysYException;
+import exception.SysYException.EKind;
 import token.Tokens.*;
 import tree.SysYTree.*;
 
@@ -11,7 +13,15 @@ public class Parser {
     private Writer writer;
     private boolean ifPrint;
 
+    public final List<SysYException> errors = new ArrayList<>();
+
+    /** The token, set by nextToken().
+     */
     private Token token;
+
+    /** The previous token, set by nextToken().
+     */
+    private Token prevToken;
 
     public Parser(Scanner scanner) {
         this.scanner = scanner;
@@ -24,7 +34,7 @@ public class Parser {
         this.ifPrint = printTree;
     }
 
-    public SysYCompilationUnit syntaxAnalyse() {
+    public SysYCompilationUnit syntaxAnalyse() throws SysYException {
         nextToken();
         return parseCompilationUnit();
     }
@@ -35,6 +45,7 @@ public class Parser {
             else writer.writeToken(token);
         }
         scanner.nextToken();
+        prevToken = token;
         token = scanner.getToken();
     }
     
@@ -50,11 +61,17 @@ public class Parser {
     /** If next input token matches given token, skip it, otherwise report
      *  an error.
      */
-    public void accept(TokenKind tk) {
+    public void accept(TokenKind tk) throws SysYException {
         if (token.tokenKind == tk) {
             nextToken();
+        } else if (tk == TokenKind.SEMI) {
+            throw new SysYException(EKind.i, prevToken.line);
+        } else if (tk == TokenKind.RPAR) {
+            throw new SysYException(EKind.j, prevToken.line);
+        } else if (tk == TokenKind.RSQU) {
+            throw new SysYException(EKind.k, prevToken.line);
         } else {
-            System.exit(1);
+            throw new SysYException(EKind.o, token.line);
         }
     }
 
@@ -62,7 +79,7 @@ public class Parser {
         return token.tokenKind == TokenKind.INT || token.tokenKind == TokenKind.VOID;
     }
 
-    public SysYCompilationUnit parseCompilationUnit() {
+    public SysYCompilationUnit parseCompilationUnit() throws SysYException {
         SysYCompilationUnit top = new SysYCompilationUnit();
 
         while (true) {
@@ -83,10 +100,10 @@ public class Parser {
                     // var declaration with token == INT
                     top.addDecl(decl());
                 } else {
-                    
+                    throw new SysYException(EKind.o, token.line);
                 }
             } else {
-                
+                throw new SysYException(EKind.o, token.line);
             }
         }
         printTree("<CompUnit>");
@@ -96,7 +113,7 @@ public class Parser {
     /**
      * Begin parse const declaration with tokenKind == "const".
      */
-    public SysYDecl constDecl() {
+    public SysYDecl constDecl() throws SysYException {
         List<SysYDef> defs = new ArrayList<>();
         accept(TokenKind.CONST);
         accept(TokenKind.INT);
@@ -105,7 +122,11 @@ public class Parser {
             nextToken();
             defs.add(constDef());
         }
-        accept(TokenKind.SEMI);
+        try {
+            accept(TokenKind.SEMI);
+        } catch (SysYException e) {
+            errors.add(e);
+        }
         printTree("<ConstDecl>");
         return new SysYDecl(true, defs);
     }
@@ -113,7 +134,7 @@ public class Parser {
     /**
      * Begin parse const definition with tokenKind == identifier.
      */
-    public SysYDef constDef() {
+    public SysYDef constDef() throws SysYException {
         Token ident = token;
         int dimension = 0;
         SysYExpression exp = null;
@@ -124,12 +145,20 @@ public class Parser {
             nextToken();
             exp = constExp();
             dimension = 1;
-            accept(TokenKind.RSQU);
+            try {
+                accept(TokenKind.RSQU);
+            } catch (SysYException e) {
+                errors.add(e);
+            }
             if (token.tokenKind == TokenKind.LSQU) {
                 nextToken();
                 exp2 = constExp();
                 dimension = 2;
-                accept(TokenKind.RSQU);
+                try {
+                    accept(TokenKind.RSQU);
+                } catch (SysYException e) {
+                    errors.add(e);
+                }
             }
         }
 
@@ -145,7 +174,7 @@ public class Parser {
     /**
      * Begin parse const initializers with token after '='.
      */
-    public SysYExpression constInit() {
+    public SysYExpression constInit() throws SysYException {
         List<SysYExpression> expressions = new ArrayList<>();
         if (token.tokenKind == TokenKind.LBRACE) {
             nextToken();
@@ -167,7 +196,7 @@ public class Parser {
     /**
      * Begin parse declaration with tokenKind == INT.
      */
-    public SysYDecl decl() {
+    public SysYDecl decl() throws SysYException {
         List<SysYDef> defs = new ArrayList<>();
         accept(TokenKind.INT);
         defs.add(def());
@@ -175,7 +204,11 @@ public class Parser {
             nextToken();
             defs.add(def());
         }
-        accept(TokenKind.SEMI);
+        try {
+            accept(TokenKind.SEMI);
+        } catch (SysYException e) {
+            errors.add(e);
+        }
         printTree("<VarDecl>");
         return new SysYDecl(false, defs);
     }
@@ -183,7 +216,7 @@ public class Parser {
     /**
      * Begin parse definition with tokenKind == identifier.
      */
-    public SysYDef def() {
+    public SysYDef def() throws SysYException {
         Token ident = token;
         int dimension = 0;
         SysYExpression exp = null;
@@ -194,12 +227,20 @@ public class Parser {
             nextToken();
             exp = constExp();
             dimension = 1;
-            accept(TokenKind.RSQU);
+            try {
+                accept(TokenKind.RSQU);
+            } catch (SysYException e) {
+                errors.add(e);
+            }
             if (token.tokenKind == TokenKind.LSQU) {
                 nextToken();
                 exp2 = constExp();
                 dimension = 2;
-                accept(TokenKind.RSQU);
+                try {
+                    accept(TokenKind.RSQU);
+                } catch (SysYException e) {
+                    errors.add(e);
+                }
             }
         }
 
@@ -215,7 +256,7 @@ public class Parser {
     /**
      * Begin parse initializers with token after '='.
      */
-    public SysYExpression init() {
+    public SysYExpression init() throws SysYException {
         List<SysYExpression> expressions = new ArrayList<>();
         if (token.tokenKind == TokenKind.LBRACE) {
             nextToken();
@@ -235,38 +276,60 @@ public class Parser {
     }
 
     /**
-     * Begin parse function definition with tokenKind == INT/VOID.
+     * ident
      */
-    public SysYFuncDef funcDef() {
-        SysYExpression type = null;
-        SysYExpression ident = null;
-        List<SysYFuncParam> funcParams = null;
-        SysYStatement block;
+    public SysYIdentifier ident() throws SysYException {
+       Token ident = token;
+       if (token.tokenKind == TokenKind.IDENT) {
+           nextToken();
+       } else {
+           throw new SysYException(EKind.o, token.line);
+       }
+       return new SysYIdentifier(ident);
+    }
+
+    /**
+     * FuncType → 'void' | 'int'
+     */
+    public SysYExpression funcType() throws SysYException {
+        Token type = token;
         if (isFuncType()) {
-            type = new SysYLiteral(token);
             nextToken();
             printTree("<FuncType>");
         } else {
-
+            throw new SysYException(EKind.o, token.line);
         }
-        if (token.tokenKind == TokenKind.IDENT) {
-            ident = new SysYIdentifier(token);
-            nextToken();
-        } else {
+        return new SysYLiteral(type);
+    }
 
-        }
+    /**
+     * Begin parse function definition with tokenKind == INT/VOID.
+     */
+    public SysYFuncDef funcDef() throws SysYException {
+        SysYExpression type;
+        SysYExpression ident;
+        List<SysYFuncParam> funcParams = null;
+        SysYStatement block;
+
+        type = funcType();
+        ident = ident();
         accept(TokenKind.LPAR);
         if (token.tokenKind != TokenKind.RPAR) funcParams = funcFParams();
-        accept(TokenKind.RPAR);
+        try {
+            accept(TokenKind.RPAR);
+        } catch (SysYException e) {
+            errors.add(e);
+        }
         block = block();
+
         printTree("<FuncDef>");
         return new SysYFuncDef(type, ident, funcParams, block);
     }
 
     /**
-     * Begin parse function fake parameters with tokenKind == INT.
+     * Begin parse function fake parameters with tokenKind after '(', tokenKind == INT.
      */
-    public List<SysYFuncParam> funcFParams() {
+    public List<SysYFuncParam> funcFParams() throws SysYException {
         List<SysYFuncParam> funcParams = new ArrayList<>();
         funcParams.add(funcFParam());
         while (token.tokenKind == TokenKind.COMMA) {
@@ -280,30 +343,34 @@ public class Parser {
     /**
      * Begin parse a function fake parameter with tokenKind == INT.
      */
-    public SysYFuncParam funcFParam() {
+    public SysYFuncParam funcFParam() throws SysYException {
         SysYFuncParam param;
         accept(TokenKind.INT);
-        if (token.tokenKind == TokenKind.IDENT) {
-            SysYExpression ident = new SysYIdentifier(token);
+        SysYExpression ident = ident();
+
+        if (token.tokenKind == TokenKind.LSQU) {
             nextToken();
+            try {
+                accept(TokenKind.RSQU);
+            } catch (SysYException e) {
+                errors.add(e);
+            }
             if (token.tokenKind == TokenKind.LSQU) {
                 nextToken();
-                accept(TokenKind.RSQU);
-                if (token.tokenKind == TokenKind.LSQU) {
-                    nextToken();
-                    SysYExpression constExp = constExp();
+                SysYExpression constExp = constExp();
+                try {
                     accept(TokenKind.RSQU);
-                    param =  new SysYFuncParam(ident, 2, constExp);
-                } else {
-                    param =  new SysYFuncParam(ident, 1);
+                } catch (SysYException e) {
+                    errors.add(e);
                 }
+                param =  new SysYFuncParam(ident, 2, constExp);
             } else {
-                param = new SysYFuncParam(ident, 0);
+                param =  new SysYFuncParam(ident, 1);
             }
         } else {
-            // error
-            param = null;
+            param = new SysYFuncParam(ident, 0);
         }
+
         printTree("<FuncFParam>");
         return param;
     }
@@ -311,10 +378,14 @@ public class Parser {
     /**
      * Begin parse function definition with tokenKind == MAIN.
      */
-    public SysYMainFuncDef mainFuncDef() {
+    public SysYMainFuncDef mainFuncDef() throws SysYException {
         accept(TokenKind.MAIN);
         accept(TokenKind.LPAR);
-        accept(TokenKind.RPAR);
+        try {
+            accept(TokenKind.RPAR);
+        } catch (SysYException e) {
+            errors.add(e);
+        }
         SysYStatement block = block();
         printTree("<MainFuncDef>");
         return new SysYMainFuncDef(block);
@@ -334,15 +405,22 @@ public class Parser {
      * 		| 'printf' '(' FormatString { ',' Exp } ')' ';'
      * @return SysYStatement
      */
-    public SysYStatement statement() {
+    public SysYStatement statement() throws SysYException {
         SysYStatement statement = null;
         switch (token.tokenKind) {
-            case LBRACE -> statement = block();
-            case IF -> {
+            case LBRACE:{
+                statement = block();
+                break;
+            }
+            case IF: {
                 nextToken();
                 accept(TokenKind.LPAR);
                 SysYExpression cond = cond();
-                accept(TokenKind.RPAR);
+                try {
+                    accept(TokenKind.RPAR);
+                } catch (SysYException e) {
+                    errors.add(e);
+                }
                 SysYStatement thenStmt = statement();
                 SysYStatement elseStmt = null;
                 if (token.tokenKind == TokenKind.ELSE) {
@@ -350,36 +428,58 @@ public class Parser {
                     elseStmt = statement();
                 }
                 statement = new SysYIf(cond, thenStmt, elseStmt);
+                break;
             }
-            case WHILE -> {
+            case WHILE: {
                 nextToken();
                 accept(TokenKind.LPAR);
                 SysYExpression cond = cond();
-                accept(TokenKind.RPAR);
+                try {
+                    accept(TokenKind.RPAR);
+                } catch (SysYException e) {
+                    errors.add(e);
+                }
                 SysYStatement thenStmt = statement();
                 statement = new SysYWhile(cond, thenStmt);
+                break;
             }
-            case CONTINUE -> {
+            case CONTINUE: {
                 nextToken();
-                accept(TokenKind.SEMI);
+                try {
+                    accept(TokenKind.SEMI);
+                } catch (SysYException e) {
+                    errors.add(e);
+                }
                 statement = new SysYContinue();
+                break;
             }
-            case BREAK -> {
+            case BREAK: {
                 nextToken();
-                accept(TokenKind.SEMI);
+                try {
+                    accept(TokenKind.SEMI);
+                } catch (SysYException e) {
+                    errors.add(e);
+                }
                 statement = new SysYBreak();
+                break;
             }
-            case RETURN -> {
+            case RETURN: {
                 nextToken();
                 SysYExpression result = token.tokenKind == TokenKind.SEMI ? null : exp();
-                accept(TokenKind.SEMI);
+                try {
+                    accept(TokenKind.SEMI);
+                } catch (SysYException e) {
+                    errors.add(e);
+                }
                 statement = new SysYReturn(result);
+                break;
             }
-            case SEMI -> {
+            case SEMI: {
                 nextToken();
                 statement = new SysYExpressionStatement();
+                break;
             }
-            case PRINTF -> {
+            case PRINTF: {
                 nextToken();
                 accept(TokenKind.LPAR);
                 if (token.tokenKind == TokenKind.FORMATS) {
@@ -392,10 +492,15 @@ public class Parser {
                     }
                     statement = new SysYPrintf(format, expressions);
                 }
-                accept(TokenKind.RPAR);
-                accept(TokenKind.SEMI);
+                try {
+                    accept(TokenKind.RPAR);
+                    accept(TokenKind.SEMI);
+                } catch (SysYException e) {
+                    errors.add(e);
+                }
+                break;
             }
-            default -> {
+            default: {
                 int pos = 0;
                 boolean flag = false;
                 Token temp;
@@ -414,7 +519,11 @@ public class Parser {
                         statement = new SysYAssign(lVal, new SysYGetInt());
                         accept(TokenKind.GETINT);
                         accept(TokenKind.LPAR);
-                        accept(TokenKind.RPAR);
+                        try {
+                            accept(TokenKind.RPAR);
+                        } catch (SysYException e) {
+                            errors.add(e);
+                        }
                     } else {
                         statement = new SysYAssign(lVal, exp());
                     }
@@ -422,7 +531,11 @@ public class Parser {
                     statement = new SysYExpressionStatement(exp());
                 }
 
-                accept(TokenKind.SEMI);
+                try {
+                    accept(TokenKind.SEMI);
+                } catch (SysYException e) {
+                    errors.add(e);
+                }
             }
         }
         printTree("<Stmt>");
@@ -432,7 +545,7 @@ public class Parser {
     /**
      * Begin parse block with token == '{'.
      */
-    public SysYStatement block() {
+    public SysYStatement block() throws SysYException {
         List<SysYStatement> statements = new ArrayList<>();
         accept(TokenKind.LBRACE);
         while (token.tokenKind != TokenKind.RBRACE) {
@@ -450,7 +563,7 @@ public class Parser {
     }
 
     /*--------parse expressions--------*/
-    public SysYExpression exp() {
+    public SysYExpression exp() throws SysYException {
         SysYExpression expression = addExp();
         printTree("<Exp>");
         return new SysYExp(expression);
@@ -489,28 +602,39 @@ public class Parser {
     /**
      * Parenthesized Expression → '(' Exp ')'
      */
-    public SysYExpression parentExp() {
+    public SysYExpression parentExp() throws SysYException {
         accept(TokenKind.LPAR);
         SysYExpression exp = exp();
-        accept(TokenKind.RPAR);
+        try {
+            accept(TokenKind.RPAR);
+        } catch (SysYException e) {
+            errors.add(e);
+        }
         return new SysYParens(exp);
     }
 
     /**
      * LVal → Ident {'[' Exp ']'}
      */
-    public SysYExpression lVal() {
-        SysYExpression ident = new SysYIdentifier(token);
+    public SysYExpression lVal() throws SysYException {
+        SysYExpression ident = ident();
         SysYExpression exp;
-        accept(TokenKind.IDENT);
         if (token.tokenKind == TokenKind.LSQU) {
             nextToken();
             SysYExpression firstExp = exp();
-            accept(TokenKind.RSQU);
+            try {
+                accept(TokenKind.RSQU);
+            } catch (SysYException e) {
+                errors.add(e);
+            }
             if (token.tokenKind == TokenKind.LSQU) {
                 nextToken();
                 SysYExpression secondExp = exp();
-                accept(TokenKind.RSQU);
+                try {
+                    accept(TokenKind.RSQU);
+                } catch (SysYException e) {
+                    errors.add(e);
+                }
                 exp = new SysYLVal(ident, 2, firstExp, secondExp);
             } else {
                 exp = new SysYLVal(ident, 1, firstExp);
@@ -537,12 +661,20 @@ public class Parser {
      * 		| LVal
      * 		| Number
      */
-    public SysYExpression primaryExp() {
+    public SysYExpression primaryExp() throws SysYException {
         SysYExpression expression;
         switch (token.tokenKind) {
-            case LPAR -> expression = new SysYPrimaryExp(1, parentExp());
-            case INTC -> expression = number();
-            default -> expression = new SysYPrimaryExp(2, lVal());
+            case LPAR: {
+                expression = new SysYPrimaryExp(1, parentExp());
+                break;
+            }
+            case INTC: {
+                expression = number();
+                break;
+            }
+            default: {
+                expression = new SysYPrimaryExp(2, lVal());
+            }
         }
         printTree("<PrimaryExp>");
         return expression;
@@ -551,7 +683,7 @@ public class Parser {
     /**
      * FuncRParams → Exp { ',' Exp }
      */
-    public List<SysYExpression> funcRParams() {
+    public List<SysYExpression> funcRParams() throws SysYException {
         List<SysYExpression> funcParams = new ArrayList<>();
         funcParams.add(exp());
         while (token.tokenKind == TokenKind.COMMA) {
@@ -577,22 +709,25 @@ public class Parser {
      * 		| Ident '(' [FuncRParams] ')'
      * 		| UnaryOp UnaryExp
      */
-    public SysYExpression unaryExp() {
+    public SysYExpression unaryExp() throws SysYException {
         SysYExpression res;
         if (isUnaryOp()) {
             Token op = unaryOp();
             SysYExpression exp = unaryExp();
             res = new SysYUnaryExp(op, exp);
         } else if (token.tokenKind == TokenKind.IDENT && lookAhead(0).tokenKind == TokenKind.LPAR) {
-            Token ident = token;
-            nextToken();
+            SysYExpression ident = ident();
             accept(TokenKind.LPAR);
             List<SysYExpression> funcParams = null;
             if (token.tokenKind != TokenKind.RPAR) {
                 funcParams = funcRParams();
             }
-            accept(TokenKind.RPAR);
-            res = new SysYUnaryExp(new SysYIdentifier(ident), funcParams);
+            try {
+                accept(TokenKind.RPAR);
+            } catch (SysYException e) {
+                errors.add(e);
+            }
+            res = new SysYUnaryExp(ident, funcParams);
         } else {
             res = new SysYUnaryExp(primaryExp());
         }
@@ -603,7 +738,7 @@ public class Parser {
     /**
      * MulExp → UnaryExp {('*' | '/' | '%') UnaryExp}
      */
-    public SysYExpression mulExp() {
+    public SysYExpression mulExp() throws SysYException {
         SysYExpression temp = unaryExp();
         SysYExpression res = new SysYMulExp(temp);
         printTree("<MulExp>");
@@ -620,7 +755,7 @@ public class Parser {
     /**
      * AddExp → MulExp {('+' | '−') MulExp}
      */
-    public SysYExpression addExp() {
+    public SysYExpression addExp() throws SysYException {
         SysYExpression temp = mulExp();
         SysYExpression res = new SysYAddExp(temp);
         printTree("<AddExp>");
@@ -637,7 +772,7 @@ public class Parser {
     /**
      * RelExp → AddExp {('<' | '>' | '<=' | '>=') AddExp}
      */
-    public SysYExpression relExp() {
+    public SysYExpression relExp() throws SysYException {
         SysYExpression temp = addExp();
         SysYExpression res = new SysYRelExp(temp);
         printTree("<RelExp>");
@@ -654,7 +789,7 @@ public class Parser {
     /**
      * EqExp → RelExp {('==' | '!=') RelExp}
      */
-    public SysYExpression eqExp() {
+    public SysYExpression eqExp() throws SysYException {
         SysYExpression temp = relExp();
         SysYExpression res = new SysYEqExp(temp);
         printTree("<EqExp>");
@@ -671,7 +806,7 @@ public class Parser {
     /**
      * LAndExp → EqExp {'&&' EqExp}
      */
-    public SysYExpression lAndExp() {
+    public SysYExpression lAndExp() throws SysYException {
         SysYExpression temp = eqExp();
         SysYExpression res = new SysYLAndExp(temp);
         printTree("<LAndExp>");
@@ -687,7 +822,7 @@ public class Parser {
     /**
      * LOrExp → LAndExp {'||' LAndExp}
      */
-    public SysYExpression lOrExp() {
+    public SysYExpression lOrExp() throws SysYException {
         SysYExpression temp = lAndExp();
         SysYExpression res = new SysYLOrExp(temp);
         printTree("<LOrExp>");
@@ -703,13 +838,13 @@ public class Parser {
     /**
      * Cond → LOrExp
      */
-    public SysYExpression cond() {
+    public SysYExpression cond() throws SysYException {
         SysYExpression cond = lOrExp();
         printTree("<Cond>");
         return new SysYCond(cond);
     }
 
-    public SysYExpression constExp() {
+    public SysYExpression constExp() throws SysYException {
         SysYExpression expression = addExp();
         printTree("<ConstExp>");
         return new SysYExp(expression);

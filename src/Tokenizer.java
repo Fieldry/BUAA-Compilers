@@ -1,9 +1,16 @@
 import token.Tokens;
+import exception.SysYException;
+import exception.SysYException.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Tokenizer {
     private Tokens tokens;
     private Reader reader;
     private Scanner scanner;
+
+    protected final List<SysYException> errors = new ArrayList<>();
 
     boolean commentsFlag = false;
     int line = 0;
@@ -151,14 +158,31 @@ public class Tokenizer {
         return new Tokens.Token(tokenKind);
     }
 
-    public void tokenAnalyse() {
+    public void tokenAnalyse() throws SysYException {
         Tokens.Token token;
         while (reader.readNextLine()) {
             line++;
             while ((token = readToken()) != null) {
                 token.line = line;
                 if (token.tokenKind == Tokens.TokenKind.IDENT || token.tokenKind == Tokens.TokenKind.FORMATS
-                        || token.tokenKind == Tokens.TokenKind.INTC) token.value = reader.savedToken();
+                        || token.tokenKind == Tokens.TokenKind.INTC) {
+                    token.value = reader.savedToken();
+                    if (token.tokenKind == Tokens.TokenKind.FORMATS) {
+                        for (int i = 0; i < token.value.length(); i++) {
+                            char c = token.value.charAt(i);
+                            if (c == '%') {
+                                c = token.value.charAt(++i);
+                                if (c != 'd') errors.add(new SysYException(EKind.a, line));
+                            } else if (c == '\\') {
+                                c = token.value.charAt(++i);
+                                if (c != 'n') errors.add(new SysYException(EKind.a, line));
+                            } else if (!(c == ' ' || c == 33 || c >= 40 && c <= 126)){
+                                errors.add(new SysYException(EKind.a, line));
+                            }
+                        }
+                        throw new SysYException(EKind.o, line);
+                    }
+                }
                 scanner.saveToken(token);
             }
         }
