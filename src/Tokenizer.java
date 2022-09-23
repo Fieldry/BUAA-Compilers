@@ -168,7 +168,7 @@ public class Tokenizer {
                         || token.tokenKind == Tokens.TokenKind.INTC) {
                     token.value = reader.savedToken();
                     if (token.tokenKind == Tokens.TokenKind.FORMATS) {
-                        for (int i = 0; i < token.value.length(); i++) {
+                        for (int i = 1; i < token.value.length() - 1; i++) {
                             char c = token.value.charAt(i);
                             if (c == '%') {
                                 c = token.value.charAt(++i);
@@ -180,11 +180,11 @@ public class Tokenizer {
                                 errors.add(new SysYException(EKind.a, line));
                             }
                         }
-                        throw new SysYException(EKind.o, line);
                     }
                 }
                 scanner.saveToken(token);
             }
         }
+        throw new SysYException(EKind.o, line);
     }
 }

@@ -1,5 +1,6 @@
 import token.Tokens.Token;
 import exception.SysYException;
+import tree.SysYTree;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -63,6 +64,12 @@ public class Writer {
             errBw.write(exception.line + " " + exception.kind + "\n");
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    public void writeErrors(List<SysYException> errors) {
+        for (SysYException error : errors) {
+            writeError(error);
         }
     }
 

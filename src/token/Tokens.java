@@ -3,7 +3,7 @@ package token;
 import java.util.HashMap;
 
 public class Tokens {
-    private static HashMap<String, TokenKind> keywords = new HashMap<>();
+    private static final HashMap<String, TokenKind> keywords = new HashMap<>();
 
     public Tokens() {
         for (TokenKind t : TokenKind.values()) {
@@ -115,6 +115,18 @@ public class Tokens {
         @Override
         public String toString() {
             return this.tokenKind.code + " " + (value == null ? "" : value);
+        }
+
+        public TokenKind getTokenKind() {
+            return tokenKind;
+        }
+
+        public int getLine() {
+            return line;
+        }
+
+        public String getValue() {
+            return value;
         }
     }
 

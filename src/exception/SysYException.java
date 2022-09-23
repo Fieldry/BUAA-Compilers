@@ -22,6 +22,9 @@ public class SysYException extends Exception {
         EKind(String name) {
             this.name = name;
         }
+
+        @Override
+        public String toString() { return this.name(); }
     }
 
     public EKind kind;
@@ -32,8 +35,18 @@ public class SysYException extends Exception {
         this.line = line;
     }
 
+    public SysYException(EKind kind) {
+        this.kind = kind;
+    }
+
+    public void setLine(int line) {
+        this.line = line;
+    }
+
+    public int getLine() { return this.line; }
+
     @Override
     public String toString() {
-        return kind.name();
+        return kind + " " + line;
     }
 }
