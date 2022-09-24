@@ -45,6 +45,8 @@ public class SysYException extends Exception {
 
     public int getLine() { return this.line; }
 
+    public EKind getKind() { return kind; }
+
     @Override
     public String toString() {
         return kind + " " + line;

@@ -175,9 +175,10 @@ public class SysYTree {
             }
             SymbolTable sub = new SymbolTable(table,
                     returnInt ? STKind.INT_FUNC : STKind.VOID_FUNC);
-            for (SysYSymbol param:funcParams) {
-                sub = param.check(sub, inLoop);
-            }
+            if (funcParams != null)
+                for (SysYSymbol param : funcParams) {
+                    sub = param.check(sub, inLoop);
+                }
             block.check(sub, inLoop);
             return table;
         }
@@ -229,7 +230,7 @@ public class SysYTree {
 
         @Override
         public SymbolTable check(SymbolTable table, boolean inLoop) {
-            block.check(new SymbolTable(table), inLoop);
+            block.check(new SymbolTable(table, STKind.INT_FUNC), inLoop);
             return table;
         }
     }

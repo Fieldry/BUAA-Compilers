@@ -77,6 +77,8 @@ public class Writer {
         try {
             bw.flush();
             bw.close();
+            errBw.flush();
+            errBw.close();
         } catch (IOException e) {
             e.printStackTrace();
         }

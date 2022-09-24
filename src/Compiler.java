@@ -21,21 +21,18 @@ public class Compiler {
 
         reader = new Reader(input);
         writer = new Writer(output, error);
+
         tokenizer = new Tokenizer(tokens, reader, scanner);
         try {
             tokenizer.tokenAnalyse();
         } catch (SysYException e) {
-            for (SysYException err: tokenizer.errors) {
-                if (err.kind != SysYException.EKind.o) writer.writeError(err);
-            }
+            if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
-        parser = new Parser(scanner, writer, true);
+        parser = new Parser(scanner);
         try {
             compUnit = parser.syntaxAnalyse();
         } catch (SysYException e) {
-            for (SysYException err: parser.errors) {
-                if (err.kind != SysYException.EKind.o) writer.writeError(err);
-            }
+            if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
 
         if (compUnit != null) {

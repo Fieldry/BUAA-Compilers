@@ -49,7 +49,7 @@ public class Parser {
 
     /*----------------helper functions----------------*/
     private void nextToken() {
-        if (token != null) {
+        if (token != null && ifPrint) {
             if (debug) System.out.println(token);
             else writer.writeToken(token);
         }
