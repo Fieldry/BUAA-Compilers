@@ -564,23 +564,11 @@ public class Parser {
                 break;
             }
             default: {
-                int pos = 0;
-                boolean flag = false;
-                Token temp;
-                while ((temp = lookAhead(pos)).tokenKind != TokenKind.SEMI) {
-                    pos++;
-                    if (temp.tokenKind == TokenKind.ASSIGN) {
-                        flag = true;
-                        break;
-                    }
-                }
-
-                if (flag) {
+                try {
                     SysYLVal lVal = (SysYLVal) lVal();
                     accept(TokenKind.ASSIGN);
 
-                    if (token.tokenKind == TokenKind.GETINT) {
-                        statement = new SysYAssign(lVal, new SysYGetInt());
+                    if (token.getTokenKind() == TokenKind.GETINT) {
                         accept(TokenKind.GETINT);
                         accept(TokenKind.LPAR);
                         try {
@@ -588,10 +576,11 @@ public class Parser {
                         } catch (SysYException e) {
                             errors.add(e);
                         }
+                        statement = new SysYAssign(lVal, new SysYGetInt());
                     } else {
                         statement = new SysYAssign(lVal, exp());
                     }
-                } else {
+                } catch (SysYException e){
                     statement = new SysYExpressionStatement(exp());
                 }
 

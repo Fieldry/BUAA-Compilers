@@ -5,7 +5,7 @@ import java.util.ArrayList;
 public class Scanner {
     /** A list of all tokens.
      */
-    private ArrayList<Token> tokens = new ArrayList<>();
+    private final ArrayList<Token> tokens = new ArrayList<>();
 
     /** The token, set by nextToken().
      */
