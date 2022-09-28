@@ -20,8 +20,8 @@ public class Reader {
 
     /** A character buffer for saved chars.
      */
-    char[] sbuf = new char[1<<20];
-    int sp;
+    private final char[] sbuf = new char[1<<20];
+    private int sp;
 
     /** The file to be read.
      */
