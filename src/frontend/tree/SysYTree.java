@@ -1,17 +1,17 @@
-package tree;
+package frontend.tree;
 
-import exception.SysYException;
-import exception.SysYException.EKind;
-import symbolTable.SymbolTable;
-import symbolTable.SymbolTable.STKind;
-import token.Tokens.*;
+import frontend.exception.SysYException;
+import frontend.exception.SysYException.EKind;
+import frontend.symbolTable.SymbolTable;
+import frontend.symbolTable.SymbolTable.STKind;
+import frontend.token.Tokens.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Root class for abstract syntax tree nodes. It provides definitions
- * for specific tree nodes as subclasses nested inside.
+ * Root class for abstract syntax frontend.tree nodes. It provides definitions
+ * for specific frontend.tree nodes as subclasses nested inside.
  */
 
 public class SysYTree {

@@ -1,7 +1,10 @@
-import exception.SysYException;
-import exception.SysYException.EKind;
-import token.Tokens.*;
-import tree.SysYTree.*;
+package frontend;
+
+import frontend.exception.SysYException;
+import frontend.exception.SysYException.EKind;
+import frontend.token.Tokens.*;
+import frontend.tree.SysYTree.*;
+import io.Writer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,11 +23,11 @@ public class Parser {
      */
     public final List<SysYException> errors = new ArrayList<>();
 
-    /** The token, set by nextToken().
+    /** The frontend.token, set by nextToken().
      */
     private Token token;
 
-    /** The previous token, set by nextToken().
+    /** The previous frontend.token, set by nextToken().
      */
     private Token prevToken;
 
@@ -67,7 +70,7 @@ public class Parser {
         }
     }
 
-    /** If next input token matches given token, skip it, otherwise report
+    /** If next input frontend.token matches given frontend.token, skip it, otherwise report
      *  an error.
      */
     public void accept(TokenKind tk) throws SysYException {
@@ -137,10 +140,10 @@ public class Parser {
                     break;
                 } else if (lookAhead(0).tokenKind == TokenKind.IDENT
                             && lookAhead(1).tokenKind == TokenKind.LPAR) {
-                    // func def with token == INT
+                    // func def with frontend.token == INT
                     top.addFuncDef(funcDef());
                 } else if (lookAhead(0).tokenKind == TokenKind.IDENT) {
-                    // var declaration with token == INT
+                    // var declaration with frontend.token == INT
                     top.addDecl(decl());
                 } else {
                     throw new SysYException(EKind.o, token.line);
@@ -216,7 +219,7 @@ public class Parser {
     }
 
     /**
-     * Begin parse const initializers with token after '='.
+     * Begin parse const initializers with frontend.token after '='.
      */
     public SysYExpression constInit() throws SysYException {
         List<SysYExpression> expressions = new ArrayList<>();
@@ -299,7 +302,7 @@ public class Parser {
     }
 
     /**
-     * Begin parse initializers with token after '='.
+     * Begin parse initializers with frontend.token after '='.
      */
     public SysYExpression init() throws SysYException {
         List<SysYExpression> expressions = new ArrayList<>();
@@ -564,23 +567,29 @@ public class Parser {
                 break;
             }
             default: {
-                try {
+                int pos = 0;
+                boolean flag = false;
+                Token temp;
+                while ((temp = lookAhead(pos)).tokenKind != TokenKind.SEMI) {
+                    pos++;
+                    if (temp.tokenKind == TokenKind.ASSIGN) {
+                        flag = true;
+                        break;
+                    }
+                }
+
+                if (flag) {
                     SysYLVal lVal = (SysYLVal) lVal();
                     accept(TokenKind.ASSIGN);
-
-                    if (token.getTokenKind() == TokenKind.GETINT) {
+                    if (token.tokenKind == TokenKind.GETINT) {
+                        statement = new SysYAssign(lVal, new SysYGetInt());
                         accept(TokenKind.GETINT);
                         accept(TokenKind.LPAR);
-                        try {
-                            accept(TokenKind.RPAR);
-                        } catch (SysYException e) {
-                            errors.add(e);
-                        }
-                        statement = new SysYAssign(lVal, new SysYGetInt());
+                        accept(TokenKind.RPAR);
                     } else {
                         statement = new SysYAssign(lVal, exp());
                     }
-                } catch (SysYException e){
+                } else {
                     statement = new SysYExpressionStatement(exp());
                 }
 
@@ -596,7 +605,7 @@ public class Parser {
     }
 
     /**
-     * Begin parse block with token == '{'.
+     * Begin parse block with frontend.token == '{'.
      */
     public SysYStatement block() throws SysYException {
         List<SysYBlockItem> statements = new ArrayList<>();

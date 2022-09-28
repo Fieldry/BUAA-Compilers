@@ -1,6 +1,9 @@
-import token.Tokens;
-import exception.SysYException;
-import exception.SysYException.*;
+package frontend;
+
+import frontend.token.Tokens;
+import frontend.exception.SysYException;
+import frontend.exception.SysYException.*;
+import io.Reader;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,10 +25,10 @@ public class Tokenizer {
         this.scanner = scanner;
     }
 
-    /** Read token.
+    /** Read frontend.token.
      */
     public Tokens.Token readToken() {
-        reader.sp = 0;
+        reader.resetSp();
         while (true) {
             if (reader.isEnd()) {
                 return null;

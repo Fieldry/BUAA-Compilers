@@ -1,4 +1,4 @@
-package token;
+package frontend.token;
 
 import java.util.HashMap;
 
@@ -83,7 +83,7 @@ public class Tokens {
     }
 
     public static class Token {
-        /** Kind of token.
+        /** Kind of frontend.token.
          */
         public TokenKind tokenKind;
 

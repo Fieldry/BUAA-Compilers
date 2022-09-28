@@ -1,7 +1,7 @@
-package symbolTable;
+package frontend.symbolTable;
 
-import exception.SysYException;
-import tree.SysYTree.SysYSymbol;
+import frontend.exception.SysYException;
+import frontend.tree.SysYTree.SysYSymbol;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package exception;
+package frontend.exception;
 
 public class SysYException extends Exception {
     public enum EKind {

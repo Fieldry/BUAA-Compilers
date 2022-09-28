@@ -1,3 +1,5 @@
+package io;
+
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -71,6 +73,8 @@ public class Reader {
     public void saveChar() { sbuf[sp++] = ch; }
 
     public String savedToken() { return String.valueOf(sbuf, 0, sp); }
+
+    public void resetSp() { sp = 0; }
 
     public boolean isDigit() { return ch <= '9' && ch >= '0'; }
 

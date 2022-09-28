@@ -1,4 +1,6 @@
-import token.Tokens.Token;
+package frontend;
+
+import frontend.token.Tokens.Token;
 
 import java.util.ArrayList;
 
@@ -7,7 +9,7 @@ public class Scanner {
      */
     private final ArrayList<Token> tokens = new ArrayList<>();
 
-    /** The token, set by nextToken().
+    /** The frontend.token, set by nextToken().
      */
     private Token token;
 

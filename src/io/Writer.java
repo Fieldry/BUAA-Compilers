@@ -1,6 +1,7 @@
-import token.Tokens.Token;
-import exception.SysYException;
-import tree.SysYTree;
+package io;
+
+import frontend.token.Tokens.Token;
+import frontend.exception.SysYException;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;

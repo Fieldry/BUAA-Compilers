@@ -1,10 +1,11 @@
-import exception.SysYException;
-import symbolTable.SymbolTable;
-import token.Tokens;
-import tree.SysYTree;
-import tree.SysYTree.*;
-
-import java.util.*;
+import frontend.Parser;
+import io.Reader;
+import frontend.Scanner;
+import frontend.Tokenizer;
+import frontend.exception.SysYException;
+import frontend.token.Tokens;
+import frontend.tree.SysYTree.*;
+import io.Writer;
 
 public class Compiler {
     public static Reader reader;
@@ -28,23 +29,23 @@ public class Compiler {
         } catch (SysYException e) {
             if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
-        parser = new Parser(scanner);
+        parser = new Parser(scanner, writer, true);
         try {
             compUnit = parser.syntaxAnalyse();
         } catch (SysYException e) {
             if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
 
-        if (compUnit != null) {
-            compUnit.check(new SymbolTable(null), false);
-        }
-
-        List<SysYException> errors = new ArrayList<>(tokenizer.errors) {{
-            addAll(parser.errors);
-            addAll(SysYTree.errors);
-            sort(Comparator.comparingInt(SysYException::getLine));
-        }};
-        writer.writeErrors(errors);
+//        if (compUnit != null) {
+//            compUnit.check(new SymbolTable(null), false);
+//        }
+//
+//        List<SysYException> errors = new ArrayList<>(tokenizer.errors) {{
+//            addAll(parser.errors);
+//            addAll(SysYTree.errors);
+//            sort(Comparator.comparingInt(SysYException::getLine));
+//        }};
+//        writer.writeErrors(errors);
         writer.close();
     }
 }
