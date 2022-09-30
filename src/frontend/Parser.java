@@ -66,7 +66,7 @@ public class Parser {
     private void printTree(String out) {
         if (ifPrint) {
             if (debug) System.out.println(out);
-            else writer.write(out);
+            else writer.writeln(out);
         }
     }
 

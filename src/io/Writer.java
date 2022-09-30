@@ -54,6 +54,14 @@ public class Writer {
 
     public void write(String string) {
         try {
+            bw.write(string);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void writeln(String string) {
+        try {
             bw.write(string + "\n");
         } catch (IOException e) {
             e.printStackTrace();

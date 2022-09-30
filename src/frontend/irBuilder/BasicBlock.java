@@ -12,4 +12,6 @@ public class BasicBlock extends Value {
     public Function getParent() { return parent; }
 
     public Instruction getTerminator() { return terminator; }
+
+    public void addInst(Instruction instruction) { instList.add(instruction); }
 }

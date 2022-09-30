@@ -2,9 +2,11 @@ package frontend.tree;
 
 import frontend.exception.SysYException;
 import frontend.exception.SysYException.EKind;
+import frontend.irBuilder.Module;
 import frontend.symbolTable.SymbolTable;
 import frontend.symbolTable.SymbolTable.STKind;
 import frontend.token.Tokens.*;
+import frontend.irBuilder.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +16,7 @@ import java.util.List;
  * for specific frontend.tree nodes as subclasses nested inside.
  */
 
-public class SysYTree {
+public abstract class SysYTree {
     public static final List<SysYException> errors = new ArrayList<>();
 
     public SymbolTable check(SymbolTable table, boolean inLoop) {
@@ -22,9 +24,9 @@ public class SysYTree {
     }
 
     public static class SysYCompilationUnit extends SysYTree {
-        List<SysYBlockItem> decls;
-        List<SysYSymbol> funcDefs;
-        SysYSymbol mainFuncDef;
+        private final List<SysYBlockItem> decls;
+        private final List<SysYSymbol> funcDefs;
+        private SysYSymbol mainFuncDef;
 
         public SysYCompilationUnit() {
             decls = new ArrayList<>();
@@ -217,11 +219,13 @@ public class SysYTree {
     }
 
     public static class SysYMainFuncDef extends SysYSymbol {
-        SysYStatement block;
+        private final SysYStatement block;
 
         public SysYMainFuncDef(SysYStatement block) {
             this.block = block;
         }
+
+        public SysYStatement getBlock() { return block; }
 
         @Override
         public SymbolKind getKind() {
@@ -256,8 +260,8 @@ public class SysYTree {
     }
 
     public static class SysYBlock extends SysYStatement {
-        public List<SysYBlockItem> block;
-        public int endLine;
+        private final List<SysYBlockItem> block;
+        private final int endLine;
 
         public SysYBlock(List<SysYBlockItem> block, int endLine) {
             this.block = block;
@@ -354,12 +358,16 @@ public class SysYTree {
     }
 
     public static class SysYReturn extends SysYStatement {
-        public int line;
-        public SysYExpression expression;
+        private final int line;
+        private final SysYExpression expression;
 
         public SysYReturn(int line, SysYExpression expression) {
             this.line = line;
             this.expression = expression;
+        }
+
+        public SysYExpression getExpression() {
+            return expression;
         }
 
         public int getLine() {
@@ -448,11 +456,13 @@ public class SysYTree {
     }
 
     public static class SysYIntC extends SysYExpression  {
-        public int value;
+        private final int value;
 
         public SysYIntC(int value) {
             this.value = value;
         }
+
+        public int getValue() { return value; }
 
         @Override
         public ReturnKind getReturnKind(SymbolTable table) {
@@ -603,8 +613,29 @@ public class SysYTree {
     }
 
     public static class SysYBinaryExp extends SysYExpression {
-        public SysYExpression leftExp;
-        public SysYExpression rightExp;
+        protected SysYExpression leftExp;
+        protected SysYExpression rightExp;
+        protected Token token;
+
+        public SysYBinaryExp() {}
+
+        public SysYBinaryExp(Token token, SysYExpression leftExp, SysYExpression rightExp) {
+            this.leftExp = leftExp;
+            this.rightExp = rightExp;
+            this.token = token;
+        }
+
+        public Token getToken() {
+            return token;
+        }
+
+        public SysYExpression getLeftExp() {
+            return leftExp;
+        }
+
+        public SysYExpression getRightExp() {
+            return rightExp;
+        }
 
         @Override
         public ReturnKind getReturnKind(SymbolTable table) throws SysYException {
@@ -617,16 +648,12 @@ public class SysYTree {
     }
 
     public static class SysYMulExp extends SysYBinaryExp {
-        public Token token;
-
         public SysYMulExp(SysYExpression leftExp) {
             this.leftExp = leftExp;
         }
 
         public SysYMulExp(Token token, SysYExpression leftExp, SysYExpression rightExp) {
-            this.token = token;
-            this.leftExp = leftExp;
-            this.rightExp = rightExp;
+            super(token, leftExp, rightExp);
         }
     }
 
@@ -679,6 +706,7 @@ public class SysYTree {
         }
 
         public SysYLAndExp(SysYExpression leftExp, SysYExpression rightExp) {
+            this.token = new Token(TokenKind.AND);
             this.leftExp = leftExp;
             this.rightExp = rightExp;
         }
@@ -691,6 +719,7 @@ public class SysYTree {
         }
 
         public SysYLOrExp(SysYExpression leftExp, SysYExpression rightExp) {
+            this.token = new Token(TokenKind.OR);
             this.leftExp = leftExp;
             this.rightExp = rightExp;
         }
