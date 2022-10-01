@@ -34,6 +34,12 @@ public abstract class SysYTree {
             mainFuncDef = null;
         }
 
+        public List<SysYBlockItem> getDecls() { return decls; }
+
+        public List<SysYSymbol> getFuncDefs() { return funcDefs; }
+
+        public SysYSymbol getMainFuncDef() { return mainFuncDef;}
+
         public void addDecl(SysYBlockItem decl) { decls.add(decl); }
         public void addFuncDef(SysYSymbol funcDef) { funcDefs.add(funcDef); }
         public void setMainFuncDef(SysYSymbol mainFuncDef) { this.mainFuncDef = mainFuncDef; }
@@ -597,13 +603,17 @@ public abstract class SysYTree {
     }
 
     public static class SysYUnaryExp extends SysYExpression {
-        public Token unaryOp;
-        public SysYExpression unaryExp;
+        private final Token unaryOp;
+        private final SysYExpression unaryExp;
 
         public SysYUnaryExp(Token unaryOp, SysYExpression unaryExp) {
             this.unaryOp = unaryOp;
             this.unaryExp = unaryExp;
         }
+
+        public Token getUnaryOp() { return unaryOp; }
+
+        public SysYExpression getUnaryExp() { return unaryExp; }
 
         @Override
         public ReturnKind getReturnKind(SymbolTable table) throws SysYException {
@@ -658,8 +668,6 @@ public abstract class SysYTree {
     }
 
     public static class SysYAddExp extends SysYBinaryExp {
-        public Token token;
-
         public SysYAddExp(SysYExpression leftExp) {
             this.leftExp = leftExp;
         }
@@ -672,8 +680,6 @@ public abstract class SysYTree {
     }
 
     public static class SysYRelExp extends SysYBinaryExp {
-        public Token token;
-
         public SysYRelExp(SysYExpression leftExp) {
             this.leftExp = leftExp;
         }
@@ -686,8 +692,6 @@ public abstract class SysYTree {
     }
 
     public static class SysYEqExp extends SysYBinaryExp {
-        public Token token;
-
         public SysYEqExp(SysYExpression leftExp) {
             this.leftExp = leftExp;
         }

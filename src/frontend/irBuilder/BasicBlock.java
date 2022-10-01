@@ -1,11 +1,14 @@
 package frontend.irBuilder;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class BasicBlock extends Value {
-    private List<Instruction> instList;
+    private final List<Instruction> instList = new ArrayList<>();
     private Function parent;
     private Instruction terminator;
+
+    public BasicBlock() {}
 
     public List<Instruction> getInstList() { return instList; }
 

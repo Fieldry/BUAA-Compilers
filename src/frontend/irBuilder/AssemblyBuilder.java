@@ -31,12 +31,11 @@ public class AssemblyBuilder {
     }
 
     public void visit(SysYCompilationUnit node) {
-
+        visit((SysYMainFuncDef) node.getMainFuncDef());
     }
 
     public void visit(SysYMainFuncDef node) {
         writer.write("define i32 @main()");
-
         writer.writeln("{");
 
         curFunction = new Function();
@@ -49,6 +48,7 @@ public class AssemblyBuilder {
 
     public void visit(SysYStatement node) {
         if (node instanceof SysYBlock) {
+            curBBlock = new BasicBlock();
             visit((SysYBlock) node);
         } else if (node instanceof SysYReturn) {
             visit((SysYReturn) node);
@@ -62,38 +62,76 @@ public class AssemblyBuilder {
     }
 
     public void visit(SysYReturn node) {
-        RetInst inst = builder.createRetInst(node.getExpression());
+        RetInst inst = builder.createRetInst(visit(node.getExpression()));
         curBBlock.addInst(inst);
-        writer.write("ret " + inst.getType() + " " + inst.getNumber());
+        writer.writeln("\t" + inst.toString());
     }
 
     public Value visit(SysYExpression node) {
-
+        if (node instanceof SysYUnaryExp) {
+            return visit((SysYUnaryExp) node);
+        } else if (node instanceof SysYBinaryExp) {
+            return visit((SysYBinaryExp) node);
+        } else if(node instanceof SysYIntC) {
+            return visit((SysYIntC) node);
+        }
         return null;
     }
 
-    public void visit(SysYBinaryExp node) {
-        switch (node.getToken().getTokenKind()) {
+    public Value visit(SysYUnaryExp node) {
+        BinaryInst inst = null;
+        switch (node.getUnaryOp().getTokenKind()) {
+            case PLUS: {
+                return visit(node.getUnaryExp());
+            }
+            case MINUS: {
+                inst = builder.createSub(ConstantInt.getZero(), visit(node.getUnaryExp()));
+            }
+        }
+        curBBlock.addInst(inst);
+        assert inst != null;
+        writer.writeln("\t" + inst);
+        return inst.getResValue();
+    }
+
+    public Value visit(SysYBinaryExp node) {
+        BinaryInst inst = null;
+        if (node.getToken() == null) {
+            return visit(node.getLeftExp());
+        } else switch (node.getToken().getTokenKind()) {
             case PLUS: {
                 Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
-                builder.createAdd(lValue, rValue);
+                inst = builder.createAdd(lValue, rValue);
                 break;
             }
             case MINUS: {
                 Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
-                builder.createSub(lValue, rValue);
+                inst = builder.createSub(lValue, rValue);
                 break;
             }
             case STAR: {
                 Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
-                builder.createMul(lValue, rValue);
+                inst = builder.createMul(lValue, rValue);
                 break;
             }
             case DIV: {
                 Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
-                builder.createDiv(lValue, rValue);
+                inst = builder.createDiv(lValue, rValue);
+                break;
+            }
+            case MOD: {
+                Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
+                inst = builder.createMod(lValue, rValue);
                 break;
             }
         }
+        curBBlock.addInst(inst);
+        assert inst != null;
+        writer.writeln("\t" + inst);
+        return inst.getResValue();
+    }
+
+    public Value visit(SysYIntC node) {
+        return builder.createConst(node.getValue());
     }
 }

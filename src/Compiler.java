@@ -1,4 +1,6 @@
 import frontend.Parser;
+import frontend.irBuilder.AssemblyBuilder;
+import frontend.irBuilder.Module;
 import io.Reader;
 import frontend.Scanner;
 import frontend.Tokenizer;
@@ -12,9 +14,11 @@ public class Compiler {
     public static Writer writer;
     public static Tokenizer tokenizer;
     public static Parser parser;
+    public static AssemblyBuilder builder;
 
     public static Tokens tokens = new Tokens();
     public static Scanner scanner = new Scanner();
+    public static Module module = new Module();
 
     public static void main(String[] args) {
         String input = "testfile.txt", output = "output.txt", error = "error.txt";
@@ -22,6 +26,7 @@ public class Compiler {
 
         reader = new Reader(input);
         writer = new Writer(output, error);
+        builder = new AssemblyBuilder(writer, module);
 
         tokenizer = new Tokenizer(tokens, reader, scanner);
         try {
@@ -29,7 +34,7 @@ public class Compiler {
         } catch (SysYException e) {
             if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
-        parser = new Parser(scanner, writer, true);
+        parser = new Parser(scanner);
         try {
             compUnit = parser.syntaxAnalyse();
         } catch (SysYException e) {
@@ -46,6 +51,7 @@ public class Compiler {
 //            sort(Comparator.comparingInt(SysYException::getLine));
 //        }};
 //        writer.writeErrors(errors);
+        builder.visit(compUnit);
         writer.close();
     }
 }

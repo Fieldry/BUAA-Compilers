@@ -6,6 +6,8 @@ public abstract class Type {
     }
     public static class IntType extends Type {
         private final int bit;
+        public static final IntType i32 = new IntType();
+        public static final IntType i1 = new IntType(1);
 
         public IntType(int bit) { this.bit = bit; }
 
