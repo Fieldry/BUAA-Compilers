@@ -6,18 +6,19 @@ import frontend.token.Tokens.*;
 import frontend.tree.SysYTree.*;
 import io.Writer;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Parser {
     private static final boolean debug = false;
 
-    private Scanner scanner;
+    private final Scanner scanner;
     private Writer writer;
 
     /** If needed to print syntax.
      */
-    private boolean ifPrint;
+    private final boolean ifPrint;
 
     /** List of Errors.
      */
@@ -326,7 +327,7 @@ public class Parser {
     /**
      * ident
      */
-    public SysYIdentifier ident() throws SysYException {
+    public SysYIdentifier ident()throws SysYException {
        Token ident = token;
        if (token.tokenKind == TokenKind.IDENT) {
            nextToken();
@@ -357,7 +358,7 @@ public class Parser {
     public SysYFuncDef funcDef() throws SysYException {
         boolean returnInt;
         SysYIdentifier ident;
-        List<SysYSymbol> funcParams = null;
+        List<SysYSymbol> funcParams;
         SysYStatement block;
         SysYFuncDef def;
 
@@ -366,6 +367,7 @@ public class Parser {
         accept(TokenKind.LPAR);
 
         if (token.tokenKind != TokenKind.RPAR) funcParams = funcFParams();
+        else funcParams = new ArrayList<>();
         try {
             accept(TokenKind.RPAR);
         } catch (SysYException e) {
@@ -384,7 +386,9 @@ public class Parser {
      */
     public List<SysYSymbol> funcFParams() throws SysYException {
         List<SysYSymbol> funcParams = new ArrayList<>();
-        funcParams.add(funcFParam());
+        SysYSymbol funcParam = funcFParam();
+        if (funcParam == null) return funcParams;
+        funcParams.add(funcParam);
         while (token.tokenKind == TokenKind.COMMA) {
             nextToken();
             funcParams.add(funcFParam());
@@ -398,7 +402,11 @@ public class Parser {
      */
     public SysYSymbol funcFParam() throws SysYException {
         SysYSymbol param;
-        accept(TokenKind.INT);
+        if (token.tokenKind == TokenKind.INT) {
+            nextToken();
+        } else {
+            return null;
+        }
         SysYIdentifier ident = ident();
 
         if (token.tokenKind == TokenKind.LSQU) {
@@ -630,6 +638,7 @@ public class Parser {
     /*--------parse expressions--------*/
     public SysYExpression exp() throws SysYException {
         SysYExpression expression = addExp();
+        if (expression == null) return null;
         printTree("<Exp>");
         return expression;
     }
@@ -638,7 +647,12 @@ public class Parser {
      * LVal → Ident {'[' Exp ']'}
      */
     public SysYExpression lVal() throws SysYException {
-        SysYIdentifier ident = ident();
+        SysYIdentifier ident;
+        try {
+            ident = ident();
+        } catch (SysYException e) {
+            return null;
+        }
         SysYExpression exp;
 
         if (token.tokenKind == TokenKind.LSQU) {
@@ -702,6 +716,7 @@ public class Parser {
             }
             default: {
                 expression = lVal();
+                if (expression == null) return null;
             }
         }
         printTree("<PrimaryExp>");
@@ -713,7 +728,9 @@ public class Parser {
      */
     public List<SysYExpression> funcRParams() throws SysYException {
         List<SysYExpression> funcParams = new ArrayList<>();
-        funcParams.add(exp());
+        SysYExpression exp = exp();
+        if (exp == null) return funcParams;
+        funcParams.add(exp);
         while (token.tokenKind == TokenKind.COMMA) {
             nextToken();
             funcParams.add(exp());
@@ -747,10 +764,17 @@ public class Parser {
             SysYIdentifier ident = ident();
 
             accept(TokenKind.LPAR);
-            List<SysYExpression> funcRParams = null;
+            List<SysYExpression> funcRParams;
             if (token.tokenKind != TokenKind.RPAR) {
                 funcRParams = funcRParams();
-            }
+//                SysYExpression exp = exp();
+//                if (exp != null) funcRParams.add(exp);
+//                while (token.tokenKind == TokenKind.COMMA) {
+//                    nextToken();
+//                    funcRParams.add(exp());
+//                }
+//                printTree("<FuncRParams>");
+            } else funcRParams = new ArrayList<>();
 
             try {
                 accept(TokenKind.RPAR);
@@ -760,6 +784,7 @@ public class Parser {
             res = new SysYFuncCall(ident, funcRParams);
         } else {
             res = primaryExp();
+            if (res == null) return null;
         }
         printTree("<UnaryExp>");
         return res;
@@ -770,6 +795,7 @@ public class Parser {
      */
     public SysYExpression mulExp() throws SysYException {
         SysYExpression temp = unaryExp();
+        if (temp == null) return null;
         SysYExpression res = new SysYMulExp(temp);
         printTree("<MulExp>");
         while (isMulOp()) {
@@ -787,6 +813,7 @@ public class Parser {
      */
     public SysYExpression addExp() throws SysYException {
         SysYExpression temp = mulExp();
+        if (temp == null) return null;
         SysYExpression res = new SysYAddExp(temp);
         printTree("<AddExp>");
         while (isAddOp()) {
@@ -804,6 +831,7 @@ public class Parser {
      */
     public SysYExpression relExp() throws SysYException {
         SysYExpression temp = addExp();
+        if (temp == null) return null;
         SysYExpression res = new SysYRelExp(temp);
         printTree("<RelExp>");
         while (isRelOp()) {
@@ -821,6 +849,7 @@ public class Parser {
      */
     public SysYExpression eqExp() throws SysYException {
         SysYExpression temp = relExp();
+        if (temp == null) return null;
         SysYExpression res = new SysYEqExp(temp);
         printTree("<EqExp>");
         while (isEqOp()) {
@@ -838,6 +867,7 @@ public class Parser {
      */
     public SysYExpression lAndExp() throws SysYException {
         SysYExpression temp = eqExp();
+        if (temp == null) return null;
         SysYExpression res = new SysYLAndExp(temp);
         printTree("<LAndExp>");
         while (isLAndOp()) {
@@ -854,6 +884,7 @@ public class Parser {
      */
     public SysYExpression lOrExp() throws SysYException {
         SysYExpression temp = lAndExp();
+        if (temp == null) return null;
         SysYExpression res = new SysYLOrExp(temp);
         printTree("<LOrExp>");
         while (isLOrOp()) {
