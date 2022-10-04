@@ -46,18 +46,46 @@ public class AssemblyBuilder {
 
     }
 
+    public void visit(SysYBlock node) {
+        for (int i = 0, len = node.getBlock().size(); i < len; i++) {
+            SysYBlockItem blockItem = node.getBlock().get(i);
+            if (blockItem instanceof SysYStatement) visit((SysYStatement) blockItem);
+            else visit((SysYDecl) blockItem);
+        }
+    }
+
+    public void visit(SysYDecl node) {
+        for (SysYSymbol symbol : node.getDefs()) {
+            visit((SysYDef) symbol);
+        }
+    }
+
+    public void visit(SysYDef node) {
+        Instruction inst = null;
+        if (node.isConst) {
+
+        } else {
+            switch (node.getDimensions()) {
+                case 0: {
+                    inst = builder.createAllocInst(node.getName());
+                    curBBlock.addInst(inst);
+                    writer.writeln("\t" + inst.toString());
+                    break;
+                }
+            }
+        }
+        Value value = visit(node.getInit());
+        inst = builder.createStrInst(node.getName(), value);
+        curBBlock.addInst(inst);
+        writer.writeln("\t" + inst);
+    }
+
     public void visit(SysYStatement node) {
         if (node instanceof SysYBlock) {
             curBBlock = new BasicBlock();
             visit((SysYBlock) node);
         } else if (node instanceof SysYReturn) {
             visit((SysYReturn) node);
-        }
-    }
-
-    public void visit(SysYBlock node) {
-        for (int i = 0, len = node.getBlock().size(); i < len; i++) {
-            visit((SysYStatement) node.getBlock().get(i));
         }
     }
 
@@ -74,6 +102,8 @@ public class AssemblyBuilder {
             return visit((SysYBinaryExp) node);
         } else if(node instanceof SysYIntC) {
             return visit((SysYIntC) node);
+        } else if (node instanceof SysYInit) {
+            return visit((SysYInit) node);
         }
         return null;
     }
@@ -133,5 +163,20 @@ public class AssemblyBuilder {
 
     public Value visit(SysYIntC node) {
         return builder.createConst(node.getValue());
+    }
+
+    public Value visit(SysYInit node) {
+        return visit(node.getExpression().get(0));
+    }
+
+    public Value visit(SysYLVal node) {
+        Instruction inst = null;
+        switch (node.getDimensions()) {
+            case 0: {
+                inst = builder.createLdInst(node.getName());
+            }
+        }
+        assert inst != null;
+        return ((MemoryInst)inst).getTo();
     }
 }

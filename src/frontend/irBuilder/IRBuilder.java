@@ -3,14 +3,41 @@ package frontend.irBuilder;
 import frontend.irBuilder.Instruction.*;
 import frontend.irBuilder.Type.*;
 import frontend.irBuilder.Instruction.BinaryInst.BinaryOp;
+import frontend.tree.SysYTree;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class IRBuilder {
     /** The count of register used.
      */
     private int regCount = 0;
     private BasicBlock block;
+    private final Map<String, Value> symbolTable = new HashMap<>();
 
     public IRBuilder() {}
+
+    private String getRegName() { return "%" + (++regCount); }
+
+    public AllocInst createAllocInst(String name) {
+        String regName = getRegName();
+        Value value = new Value(IntType.i32, regName);
+        symbolTable.put(name, value);
+        return new AllocInst(block, value);
+    }
+
+    public MemoryInst createStrInst(String name, Value from) {
+        Value to = symbolTable.get(name);
+        return new MemoryInst(block, 0, from, to);
+    }
+
+    public MemoryInst createLdInst(String name) {
+        String regName = getRegName();
+        Value from = symbolTable.get(name);
+        Value to = new Value(IntType.i32, regName);
+        symbolTable.put(name, to);
+        return new MemoryInst(block, 1, from, to);
+    }
 
     public RetInst createRetInst(Value value) {
         return new RetInst(IntType.i32, value);

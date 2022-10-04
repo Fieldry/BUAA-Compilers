@@ -13,7 +13,7 @@ public class Tokenizer {
     private Reader reader;
     private Scanner scanner;
 
-    protected final List<SysYException> errors = new ArrayList<>();
+    public final List<SysYException> errors = new ArrayList<>();
 
     boolean commentsFlag = false;
     int line = 0;

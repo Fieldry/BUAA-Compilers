@@ -38,10 +38,10 @@ public abstract class Instruction extends User {
                 return this.name().toLowerCase(Locale.ROOT);
             }
         }
-        private BinaryOp op;
-        private Value lValue;
-        private Value rValue;
-        private Value resValue;
+        private final BinaryOp op;
+        private final Value lValue;
+        private final Value rValue;
+        private final Value resValue;
 
         public BinaryInst(BasicBlock parent, BinaryOp op, Value lValue, Value rValue, Value resValue) {
             super(parent);
@@ -66,9 +66,17 @@ public abstract class Instruction extends User {
     }
 
     public static class AllocInst extends Instruction {
-        IntType type;
+        Value value;
 
-        public AllocInst(int bit) { type = new IntType(bit); }
+        public AllocInst(BasicBlock parent, Value value) {
+            super(parent);
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return value + " = alloca " + value.getType();
+        }
     }
 
     public static class RetInst extends Instruction {
@@ -87,6 +95,38 @@ public abstract class Instruction extends User {
         @Override
         public String toString() {
             return "ret " + type + " " + value;
+        }
+    }
+
+    public static class MemoryInst extends Instruction {
+        /** 0 for store, 1 for load*/
+        private final int flag;
+        private final Value from;
+        private final Value to;
+
+        public MemoryInst(BasicBlock parent, int flag, Value from, Value to) {
+            super(parent);
+            this.flag = flag;
+            this.from = from;
+            this.to = to;
+        }
+
+        public int getFlag() {
+            return flag;
+        }
+
+        public Value getFrom() {
+            return from;
+        }
+
+        public Value getTo() {
+            return to;
+        }
+
+        @Override
+        public String toString() {
+            if (flag == 1) return to + " = load " + to.getType() + ", " + from.getType() + "* " + from;
+            else return "store " + from.getType() + " " + from + ", " + to.getType() + "* " + to;
         }
     }
 }

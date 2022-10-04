@@ -1,13 +1,19 @@
-import frontend.Parser;
 import frontend.irBuilder.AssemblyBuilder;
 import frontend.irBuilder.Module;
-import io.Reader;
-import frontend.Scanner;
-import frontend.Tokenizer;
+import frontend.symbolTable.SymbolTable;
 import frontend.exception.SysYException;
 import frontend.token.Tokens;
+import frontend.tree.SysYTree;
 import frontend.tree.SysYTree.*;
+import frontend.Parser;
+import frontend.Scanner;
+import frontend.Tokenizer;
+import io.Reader;
 import io.Writer;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class Compiler {
     public static Reader reader;
@@ -45,13 +51,14 @@ public class Compiler {
 //            compUnit.check(new SymbolTable(null), false);
 //        }
 //
-//        List<SysYException> errors = new ArrayList<>(tokenizer.errors) {{
+//        List<SysYException> errors = new ArrayList<SysYException>() {{
+//            addAll(tokenizer.errors);
 //            addAll(parser.errors);
 //            addAll(SysYTree.errors);
 //            sort(Comparator.comparingInt(SysYException::getLine));
 //        }};
 //        writer.writeErrors(errors);
-        builder.visit(compUnit);
+        // builder.visit(compUnit);
         writer.close();
     }
 }
