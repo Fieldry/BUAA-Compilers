@@ -33,8 +33,8 @@ public class Writer {
 
     public void writeToken(Token token) {
         try {
-            bw.write(token.tokenKind.code + " "
-                    + (token.value != null ? token.value : token.tokenKind.name) + "\n");
+            bw.write(token.getTokenKind().getCode() + " "
+                    + (token.getValue() != null ? token.getValue() : token.getTokenKind().getName()) + "\n");
         } catch (IOException e) {
             e.printStackTrace();
         }

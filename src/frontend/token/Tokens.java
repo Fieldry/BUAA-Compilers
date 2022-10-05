@@ -65,8 +65,8 @@ public class Tokens {
         // One-line comment
         OLC("//", "OLC");
 
-        public final String name;
-        public final String code;
+        private final String name;
+        private final String code;
 
         TokenKind(String name) {
             this.name = name;
@@ -78,6 +78,14 @@ public class Tokens {
             this.code = code;
         }
 
+        public String getName() {
+            return name;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
         @Override
         public String toString() { return this.code; }
     }
@@ -85,21 +93,22 @@ public class Tokens {
     public static class Token {
         /** Kind of frontend.token.
          */
-        public TokenKind tokenKind;
+        private final TokenKind tokenKind;
 
         /** Which line.
          */
-        public int line;
+        private int line;
 
         /** Real value for IntConst, FormatString and Identifier.
          */
-        public String value;
+        private String value;
 
         public Token(TokenKind tokenKind) {
             this.tokenKind = tokenKind;
             this.line = 0;
             this.value = null;
         }
+
         public Token(TokenKind tokenKind, int line) {
             this.tokenKind = tokenKind;
             this.line = line;
@@ -128,6 +137,10 @@ public class Tokens {
         public String getValue() {
             return value;
         }
+
+        public void setLine(int line) { this.line = line; }
+
+        public void setValue(String value) { this.value = value; }
     }
 
     public TokenKind lookupKeywords(String name) {

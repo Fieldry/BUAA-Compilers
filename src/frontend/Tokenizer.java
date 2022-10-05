@@ -9,14 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Tokenizer {
-    private Tokens tokens;
-    private Reader reader;
-    private Scanner scanner;
+    private final Tokens tokens;
+    private final Reader reader;
+    private final Scanner scanner;
 
     public final List<SysYException> errors = new ArrayList<>();
 
-    boolean commentsFlag = false;
-    int line = 0;
+    private boolean commentsFlag = false;
+    private int line = 0;
     Tokens.TokenKind tokenKind;
 
     public Tokenizer(Tokens tokens, Reader reader, Scanner scanner) {
@@ -166,18 +166,19 @@ public class Tokenizer {
         while (reader.readNextLine()) {
             line++;
             while ((token = readToken()) != null) {
-                token.line = line;
-                if (token.tokenKind == Tokens.TokenKind.IDENT || token.tokenKind == Tokens.TokenKind.FORMATS
-                        || token.tokenKind == Tokens.TokenKind.INTC) {
-                    token.value = reader.savedToken();
-                    if (token.tokenKind == Tokens.TokenKind.FORMATS) {
-                        for (int i = 1; i < token.value.length() - 1; i++) {
-                            char c = token.value.charAt(i);
+                token.setLine(line);
+                if (token.getTokenKind() == Tokens.TokenKind.IDENT || token.getTokenKind() == Tokens.TokenKind.FORMATS
+                        || token.getTokenKind() == Tokens.TokenKind.INTC) {
+                    token.setValue(reader.savedToken());
+                    if (token.getTokenKind() == Tokens.TokenKind.FORMATS) {
+                        String string = token.getValue();
+                        for (int i = 1, size = string.length() - 1; i < size; i++) {
+                            char c = string.charAt(i);
                             if (c == '%') {
-                                c = token.value.charAt(++i);
+                                c = string.charAt(++i);
                                 if (c != 'd') errors.add(new SysYException(EKind.a, line));
                             } else if (c == '\\') {
-                                c = token.value.charAt(++i);
+                                c = string.charAt(++i);
                                 if (c != 'n') errors.add(new SysYException(EKind.a, line));
                             } else if (!(c == ' ' || c == 33 || c >= 40 && c <= 126)){
                                 errors.add(new SysYException(EKind.a, line));

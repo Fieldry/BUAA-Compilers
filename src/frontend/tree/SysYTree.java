@@ -2,11 +2,9 @@ package frontend.tree;
 
 import frontend.exception.SysYException;
 import frontend.exception.SysYException.EKind;
-import frontend.irBuilder.Module;
 import frontend.symbolTable.SymbolTable;
 import frontend.symbolTable.SymbolTable.STKind;
 import frontend.token.Tokens.*;
-import frontend.irBuilder.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,10 +45,10 @@ public abstract class SysYTree {
         @Override
         public SymbolTable check(SymbolTable table, boolean inLoop) {
             for (SysYBlockItem decl : decls) {
-                table = decl.check(table, inLoop);
+                if (decl != null) table = decl.check(table, inLoop);
             }
             for (SysYSymbol symbol : funcDefs) {
-                table = symbol.check(table, inLoop);
+                if (symbol != null) table = symbol.check(table, inLoop);
             }
             return mainFuncDef.check(table, inLoop);
         }
@@ -99,14 +97,14 @@ public abstract class SysYTree {
             MAIN_FUNCTION
         }
 
-        public SysYIdentifier ident;
+        protected SysYIdentifier ident;
 
         public int getLine() { return ident.getLine(); }
 
-        public String getName() { return ident.getName(); }
+        public String getName() { return ident.getValue(); }
 
         @Override
-        public String toString() { return ident.getLine() + " " + ident.getName(); }
+        public String toString() { return ident.getLine() + " " + ident.getValue(); }
 
         public abstract SymbolKind getKind();
     }
@@ -153,7 +151,7 @@ public abstract class SysYTree {
         @Override
         public SymbolTable check(SymbolTable table, boolean inLoop) {
             try {
-                table.addSymbol(ident.getName(), this);
+                table.addSymbol(ident.getValue(), this);
             } catch (SysYException e) {
                 e.setLine(ident.getLine());
                 errors.add(e);
@@ -194,7 +192,7 @@ public abstract class SysYTree {
         public SysYFuncDef(boolean returnInt, SysYIdentifier ident, List<SysYSymbol> funcParams, SysYStatement block) {
             this.returnInt = returnInt;
             this.ident = ident;
-            this.funcParams = funcParams;
+            this.funcParams = funcParams == null ? new ArrayList<>() : funcParams;
             this.block = block;
         }
 
@@ -206,7 +204,7 @@ public abstract class SysYTree {
         @Override
         public SymbolTable check(SymbolTable table, boolean inLoop) {
             try {
-                table.addSymbol(ident.getName(), this);
+                table.addSymbol(ident.getValue(), this);
             } catch (SysYException e) {
                 e.setLine(ident.getLine());
                 errors.add(e);
@@ -246,7 +244,7 @@ public abstract class SysYTree {
         @Override
         public SymbolTable check(SymbolTable table, boolean inLoop) {
             try {
-                table.addSymbol(ident.getName(), this);
+                table.addSymbol(ident.getValue(), this);
             } catch (SysYException e) {
                 e.setLine(ident.getLine());
                 errors.add(e);
@@ -303,7 +301,7 @@ public abstract class SysYTree {
         private final int endLine;
 
         public SysYBlock(List<SysYBlockItem> block, int endLine) {
-            this.block = block;
+            this.block = block == null ? new ArrayList<>() : block;
             this.endLine = endLine;
         }
 
@@ -313,16 +311,19 @@ public abstract class SysYTree {
         public SymbolTable check(SymbolTable table, boolean inLoop) {
             SymbolTable sub = new SymbolTable(table);
             for (SysYBlockItem item : block) {
-                if (item != null) sub = item.check(sub, inLoop);
-                if (table.kind == STKind.VOID_FUNC
-                    && (item instanceof SysYReturn) && ((SysYReturn) item).expression != null) {
-                    errors.add(new SysYException(EKind.f, ((SysYReturn) item).getLine()));
+                if (item != null) {
+                    sub = item.check(sub, inLoop);
+                    if (table.kind == STKind.VOID_FUNC && (item instanceof SysYReturn) &&
+                            ((SysYReturn) item).expression != null ) {
+                        errors.add(new SysYException(EKind.f, ((SysYReturn) item).getLine()));
+                    }
                 }
             }
-            if (table.kind == STKind.INT_FUNC
-                && (block.isEmpty() || !(block.get(block.size() - 1) instanceof SysYReturn))) {
-                errors.add(new SysYException(EKind.g, endLine));
-            }
+            if (table.kind == STKind.INT_FUNC &&
+                    (block.isEmpty() || !(block.get(block.size() - 1) instanceof SysYReturn))) {
+                    errors.add(new SysYException(EKind.g, endLine));
+                }
+
             return table;
         }
     }
@@ -340,7 +341,6 @@ public abstract class SysYTree {
 
         @Override
         public SymbolTable check(SymbolTable table, boolean inLoop) {
-            if (cond != null) table = cond.check(table, inLoop);
             if (thenStmt != null) table = thenStmt.check(table, inLoop);
             if (elseStmt != null) table = elseStmt.check(table, inLoop);
             return table;
@@ -358,7 +358,6 @@ public abstract class SysYTree {
 
         @Override
         public SymbolTable check(SymbolTable table, boolean inLoop) {
-            if (cond != null) table = cond.check(table, inLoop);
             if (stmt != null) table = stmt.check(table, true);
             return table;
         }
@@ -415,7 +414,6 @@ public abstract class SysYTree {
 
         @Override
         public SymbolTable check(SymbolTable table, boolean inLoop) {
-            if (expression != null) table = expression.check(table, inLoop);
             return table;
         }
     }
@@ -436,7 +434,11 @@ public abstract class SysYTree {
         public SysYExpression exp;
         public boolean isEmpty;
 
-        public SysYExpressionStatement() { isEmpty = true; }
+        public SysYExpressionStatement() {
+            exp = null;
+            isEmpty = true;
+        }
+
         public SysYExpressionStatement(SysYExpression exp) {
             this.exp = exp;
             isEmpty = false;
@@ -487,17 +489,17 @@ public abstract class SysYTree {
     }
 
     public static class SysYIdentifier extends SysYTree {
-        private final Token name;
+        private final Token ident;
 
         public SysYIdentifier(Token token) {
-            name = token;
+            ident = token;
         }
 
-        public String getName() {
-            return name.value;
+        public String getValue() {
+            return ident.getValue();
         }
 
-        public int getLine() { return name.line; }
+        public int getLine() { return ident.getLine(); }
     }
 
     public static class SysYIntC extends SysYExpression  {
@@ -553,12 +555,12 @@ public abstract class SysYTree {
 
         public int getLine() { return ident.getLine(); }
 
-        public String getName() { return ident.getName(); }
+        public String getName() { return ident.getValue(); }
 
         @Override
         public SymbolTable check(SymbolTable table, boolean inLoop) {
             if (ident == null) return table;
-            SysYSymbol symbol = table.findSymbolInAll(ident.getName());
+            SysYSymbol symbol = table.findSymbolInAll(ident.getValue());
             if (symbol == null) {
                 errors.add(new SysYException(EKind.c, ident.getLine()));
             }
@@ -567,9 +569,13 @@ public abstract class SysYTree {
 
         @Override
         public ReturnKind getReturnKind(SymbolTable table) throws SysYException {
-            SysYSymbol symbol = table.findSymbolInAll(ident.getName());
+            SysYSymbol symbol = table.findSymbolInAll(ident.getValue());
             if (symbol != null) {
-                int calDim = ((SysYDef) symbol).getDimensions();
+                int calDim;
+                if (symbol instanceof SysYDef) calDim = ((SysYDef) symbol).getDimensions();
+                else if (symbol instanceof SysYFuncParam) calDim = ((SysYFuncParam) symbol).dimensions;
+                else throw new SysYException(EKind.o);
+
                 switch (this.dimensions - calDim) {
                     case 0:
                         return ReturnKind.INT;
@@ -585,17 +591,17 @@ public abstract class SysYTree {
     }
 
     public static class SysYFuncCall extends SysYExpression {
-        public SysYIdentifier ident;
-        public List<SysYExpression> funcRParams;
+        private final SysYIdentifier ident;
+        private final List<SysYExpression> funcRParams;
 
         public SysYFuncCall(SysYIdentifier ident, List<SysYExpression> funcParams) {
             this.ident = ident;
-            this.funcRParams = funcParams;
+            this.funcRParams = funcParams == null ? new ArrayList<>() : funcParams;
         }
 
         @Override
         public SymbolTable check(SymbolTable table, boolean inLoop) {
-            SysYSymbol symbol = table.findSymbolInAll(ident.getName());
+            SysYSymbol symbol = table.findSymbolInAll(ident.getValue());
             if (symbol == null) {
                 errors.add(new SysYException(EKind.c, ident.getLine()));
             } else {
@@ -603,7 +609,7 @@ public abstract class SysYTree {
                 if (funcDef.funcParams.size() != funcRParams.size()) {
                     errors.add(new SysYException(EKind.d, ident.getLine()));
                 } else
-                for (int i = 0, size = funcDef.funcParams.size(); i < size; i++ ) {
+                for (int i = 0, size = funcRParams.size(); i < size; i++ ) {
                     SysYFuncParam funcParam = (SysYFuncParam) funcDef.funcParams.get(i);
                     switch (funcParam.dimensions) {
                         case 2: {
@@ -648,7 +654,7 @@ public abstract class SysYTree {
 
         @Override
         public ReturnKind getReturnKind(SymbolTable table) throws SysYException {
-            SysYSymbol symbol = table.findSymbolInAll(ident.getName());
+            SysYSymbol symbol = table.findSymbolInAll(ident.getValue());
             if (symbol != null && symbol.getKind() == SysYSymbol.SymbolKind.FUNCTION) {
                 return ((SysYFuncDef) symbol).returnInt ? ReturnKind.INT : ReturnKind.VOID;
             }
@@ -710,11 +716,11 @@ public abstract class SysYTree {
 
         @Override
         public ReturnKind getReturnKind(SymbolTable table) throws SysYException {
-            ReturnKind leftRet = leftExp == null ? null : leftExp.getReturnKind(table);
+            ReturnKind leftRet = leftExp.getReturnKind(table);
             ReturnKind rightRet = rightExp == null ? null : rightExp.getReturnKind(table);
-            if (leftRet != rightRet) throw new SysYException(EKind.e);
-            if (leftRet == ReturnKind.INT) return ReturnKind.INT;
-            throw new SysYException(EKind.e);
+            if (rightRet != null && leftRet != rightRet) throw new SysYException(EKind.e);
+            else if (leftRet == ReturnKind.INT) return ReturnKind.INT;
+            else throw new SysYException(EKind.e);
         }
 
         @Override
@@ -804,7 +810,7 @@ public abstract class SysYTree {
 
         @Override
         public ReturnKind getReturnKind(SymbolTable table) throws SysYException {
-            if (cond.getReturnKind(table) == ReturnKind.INT) return ReturnKind.INT;
+            if (cond != null && cond.getReturnKind(table) == ReturnKind.INT) return ReturnKind.INT;
             else throw new SysYException(EKind.e);
         }
 

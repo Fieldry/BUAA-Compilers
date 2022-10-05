@@ -40,25 +40,31 @@ public class Compiler {
         } catch (SysYException e) {
             if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
-        parser = new Parser(scanner);
+        parser = new Parser(scanner, writer, true);
+
         try {
             compUnit = parser.syntaxAnalyse();
         } catch (SysYException e) {
             if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
+        /*
+        if (compUnit != null) {
+            try {
+                compUnit.check(new SymbolTable(null), false);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
 
-//        if (compUnit != null) {
-//            compUnit.check(new SymbolTable(null), false);
-//        }
-//
-//        List<SysYException> errors = new ArrayList<SysYException>() {{
-//            addAll(tokenizer.errors);
-//            addAll(parser.errors);
-//            addAll(SysYTree.errors);
-//            sort(Comparator.comparingInt(SysYException::getLine));
-//        }};
-//        writer.writeErrors(errors);
+        List<SysYException> errors = new ArrayList<SysYException>() {{
+            addAll(tokenizer.errors);
+            addAll(parser.errors);
+            addAll(SysYTree.errors);
+            sort(Comparator.comparingInt(SysYException::getLine));
+        }};
+        writer.writeErrors(errors);
         // builder.visit(compUnit);
+        */
         writer.close();
     }
 }
