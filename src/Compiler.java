@@ -40,13 +40,14 @@ public class Compiler {
         } catch (SysYException e) {
             if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
-        parser = new Parser(scanner, writer, true);
+        parser = new Parser(scanner);
 
         try {
             compUnit = parser.syntaxAnalyse();
         } catch (SysYException e) {
             if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
+
         /*
         if (compUnit != null) {
             try {
@@ -63,8 +64,10 @@ public class Compiler {
             sort(Comparator.comparingInt(SysYException::getLine));
         }};
         writer.writeErrors(errors);
-        // builder.visit(compUnit);
-        */
+         */
+        assert compUnit != null;
+        builder.generateLLVM(compUnit);
+
         writer.close();
     }
 }

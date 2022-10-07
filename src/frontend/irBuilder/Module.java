@@ -19,4 +19,12 @@ public class Module extends Value {
     public Function getFunction(int index) { return functionList.get(index); }
 
     public GlobalVariable getGlobal(int index) { return globalList.get(index); }
+
+    public List<Function> getFunctionList() {
+        return functionList;
+    }
+
+    public List<GlobalVariable> getGlobalList() {
+        return globalList;
+    }
 }

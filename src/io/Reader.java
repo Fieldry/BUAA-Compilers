@@ -25,8 +25,8 @@ public class Reader {
 
     /** The file to be read.
      */
-    String filename;
-    BufferedReader br;
+    private final String filename;
+    private BufferedReader br;
 
     public Reader(String filename) {
         this.filename = filename;

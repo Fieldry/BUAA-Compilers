@@ -12,13 +12,13 @@ public class Writer {
 
     /** The file to output.
      */
-    String filename;
-    BufferedWriter bw;
+    private final String filename;
+    private BufferedWriter bw;
 
     /** The file to output error.
      */
-    String errFilename;
-    BufferedWriter errBw;
+    private final String errFilename;
+    private BufferedWriter errBw;
 
     public Writer(String filename, String errFilename) {
         this.filename = filename;

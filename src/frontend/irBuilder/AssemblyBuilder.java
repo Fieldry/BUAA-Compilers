@@ -8,7 +8,7 @@ public class AssemblyBuilder {
     private final Writer writer;
 
     private final Module module;
-    private IRBuilder builder = new IRBuilder();
+    private final IRBuilder builder = new IRBuilder();
 
     private Value value;
     private int constIntValue;
@@ -30,19 +30,31 @@ public class AssemblyBuilder {
         this.module = module;
     }
 
+    public void generateLLVM(SysYCompilationUnit node) {
+        visit(node);
+        for (Function function : module.getFunctionList()) {
+            writer.writeln("define i32 @" + function.getName() + "(){");
+            for (BasicBlock bBlock : function.getBBlockList()) {
+                writer.writeln(bBlock.getName() + ":");
+                for (Instruction inst : bBlock.getInstList()) {
+                    writer.writeln("\t" + inst);
+                }
+            }
+            writer.writeln("}");
+        }
+    }
+
     public void visit(SysYCompilationUnit node) {
         visit((SysYMainFuncDef) node.getMainFuncDef());
     }
 
     public void visit(SysYMainFuncDef node) {
-        writer.write("define i32 @main()");
-        writer.writeln("{");
 
-        curFunction = new Function();
+        curFunction = new Function("main", module);
         module.addFunction(curFunction);
-        visit(node.getBlock());
-
-        writer.writeln("}");
+        curBBlock = new BasicBlock("main", curFunction);
+        curFunction.addBBlock(curBBlock);
+        visit((SysYBlock) node.getBlock());
 
     }
 
@@ -69,7 +81,7 @@ public class AssemblyBuilder {
                 case 0: {
                     inst = builder.createAllocInst(node.getName());
                     curBBlock.addInst(inst);
-                    writer.writeln("\t" + inst.toString());
+                    // writer.writeln("\t" + inst.toString());
                     break;
                 }
             }
@@ -77,22 +89,41 @@ public class AssemblyBuilder {
         Value value = visit(node.getInit());
         inst = builder.createStrInst(node.getName(), value);
         curBBlock.addInst(inst);
-        writer.writeln("\t" + inst);
+        // writer.writeln("\t" + inst);
     }
 
     public void visit(SysYStatement node) {
         if (node instanceof SysYBlock) {
-            curBBlock = new BasicBlock();
+            curBBlock = builder.createBlock(curFunction);
             visit((SysYBlock) node);
         } else if (node instanceof SysYReturn) {
             visit((SysYReturn) node);
+        } else if (node instanceof SysYIf) {
+            visit((SysYIf) node);
         }
+    }
+
+    public void visit(SysYIf node) {
+        Value cond = visit(node.getCond());
+        BranchInst inst = builder.createBranchInst(cond);
+        curBBlock.addInst(inst);
+
+        visit(node.getThenStmt());
+        curFunction.addBBlock(curBBlock);
+        inst.setThenBlock(curBBlock);
+
+        if (node.getElseStmt() != null) {
+            visit(node.getElseStmt());
+            curFunction.addBBlock(curBBlock);
+            inst.setElseBlock(curBBlock);
+        }
+        // writer.writeln("\t" + inst);
     }
 
     public void visit(SysYReturn node) {
         RetInst inst = builder.createRetInst(visit(node.getExpression()));
         curBBlock.addInst(inst);
-        writer.writeln("\t" + inst.toString());
+        // writer.writeln("\t" + inst.toString());
     }
 
     public Value visit(SysYExpression node) {
@@ -104,6 +135,10 @@ public class AssemblyBuilder {
             return visit((SysYIntC) node);
         } else if (node instanceof SysYInit) {
             return visit((SysYInit) node);
+        } else if (node instanceof SysYCond) {
+            return visit((SysYCond) node);
+        } else if (node instanceof SysYLVal) {
+            return visit((SysYLVal) node, true);
         }
         return null;
     }
@@ -120,7 +155,7 @@ public class AssemblyBuilder {
         }
         curBBlock.addInst(inst);
         assert inst != null;
-        writer.writeln("\t" + inst);
+        // writer.writeln("\t" + inst);
         return inst.getResValue();
     }
 
@@ -128,36 +163,13 @@ public class AssemblyBuilder {
         BinaryInst inst = null;
         if (node.getToken() == null) {
             return visit(node.getLeftExp());
-        } else switch (node.getToken().getTokenKind()) {
-            case PLUS: {
-                Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
-                inst = builder.createAdd(lValue, rValue);
-                break;
-            }
-            case MINUS: {
-                Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
-                inst = builder.createSub(lValue, rValue);
-                break;
-            }
-            case STAR: {
-                Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
-                inst = builder.createMul(lValue, rValue);
-                break;
-            }
-            case DIV: {
-                Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
-                inst = builder.createDiv(lValue, rValue);
-                break;
-            }
-            case MOD: {
-                Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
-                inst = builder.createMod(lValue, rValue);
-                break;
-            }
+        } else {
+            Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
+            inst = builder.createBinaryInst(node.getToken(), lValue, rValue);
         }
         curBBlock.addInst(inst);
         assert inst != null;
-        writer.writeln("\t" + inst);
+        // writer.writeln("\t" + inst);
         return inst.getResValue();
     }
 
@@ -169,14 +181,21 @@ public class AssemblyBuilder {
         return visit(node.getExpression().get(0));
     }
 
-    public Value visit(SysYLVal node) {
-        Instruction inst = null;
+    public Value visit(SysYLVal node, boolean load) {
+        MemoryInst inst = null;
         switch (node.getDimensions()) {
             case 0: {
-                inst = builder.createLdInst(node.getName());
+                if (load) {
+                    inst = builder.createLdInst(node.getName());
+                    curBBlock.addInst(inst);
+                }
+                return builder.getLValueByName(node.getName());
             }
         }
-        assert inst != null;
-        return ((MemoryInst)inst).getTo();
+        return inst.getTo();
+    }
+
+    public Value visit(SysYCond node) {
+        return visit((SysYBinaryExp) node.getCond());
     }
 }

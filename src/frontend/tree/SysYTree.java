@@ -313,13 +313,13 @@ public abstract class SysYTree {
             for (SysYBlockItem item : block) {
                 if (item != null) {
                     sub = item.check(sub, inLoop);
-                    if (table.kind == STKind.VOID_FUNC && (item instanceof SysYReturn) &&
+                    if (table.getKind() == STKind.VOID_FUNC && (item instanceof SysYReturn) &&
                             ((SysYReturn) item).expression != null ) {
                         errors.add(new SysYException(EKind.f, ((SysYReturn) item).getLine()));
                     }
                 }
             }
-            if (table.kind == STKind.INT_FUNC &&
+            if (table.getKind() == STKind.INT_FUNC &&
                     (block.isEmpty() || !(block.get(block.size() - 1) instanceof SysYReturn))) {
                     errors.add(new SysYException(EKind.g, endLine));
                 }
@@ -329,9 +329,9 @@ public abstract class SysYTree {
     }
 
     public static class SysYIf extends SysYStatement {
-        public SysYExpression cond;
-        public SysYStatement thenStmt;
-        public SysYStatement elseStmt;
+        private final SysYExpression cond;
+        private final SysYStatement thenStmt;
+        private final SysYStatement elseStmt;
 
         public SysYIf(SysYExpression cond, SysYStatement thenStmt, SysYStatement elseStmt) {
             this.cond = cond;
@@ -344,6 +344,18 @@ public abstract class SysYTree {
             if (thenStmt != null) table = thenStmt.check(table, inLoop);
             if (elseStmt != null) table = elseStmt.check(table, inLoop);
             return table;
+        }
+
+        public SysYExpression getCond() {
+            return cond;
+        }
+
+        public SysYStatement getThenStmt() {
+            return thenStmt;
+        }
+
+        public SysYStatement getElseStmt() {
+            return elseStmt;
         }
     }
 
@@ -694,7 +706,7 @@ public abstract class SysYTree {
         protected SysYExpression rightExp;
         protected Token token;
 
-        public SysYBinaryExp() {}
+        public SysYBinaryExp(SysYExpression leftExp) { this.leftExp = leftExp; }
 
         public SysYBinaryExp(Token token, SysYExpression leftExp, SysYExpression rightExp) {
             this.leftExp = leftExp;
@@ -733,7 +745,7 @@ public abstract class SysYTree {
 
     public static class SysYMulExp extends SysYBinaryExp {
         public SysYMulExp(SysYExpression leftExp) {
-            this.leftExp = leftExp;
+            super(leftExp);
         }
 
         public SysYMulExp(Token token, SysYExpression leftExp, SysYExpression rightExp) {
@@ -743,70 +755,62 @@ public abstract class SysYTree {
 
     public static class SysYAddExp extends SysYBinaryExp {
         public SysYAddExp(SysYExpression leftExp) {
-            this.leftExp = leftExp;
+            super(leftExp);
         }
 
         public SysYAddExp(Token token, SysYExpression leftExp, SysYExpression rightExp) {
-            this.token = token;
-            this.leftExp = leftExp;
-            this.rightExp = rightExp;
+            super(token, leftExp, rightExp);
         }
     }
 
     public static class SysYRelExp extends SysYBinaryExp {
         public SysYRelExp(SysYExpression leftExp) {
-            this.leftExp = leftExp;
+            super(leftExp);
         }
 
         public SysYRelExp(Token token, SysYExpression leftExp, SysYExpression rightExp) {
-            this.token = token;
-            this.leftExp = leftExp;
-            this.rightExp = rightExp;
+            super(token, leftExp, rightExp);
         }
     }
 
     public static class SysYEqExp extends SysYBinaryExp {
         public SysYEqExp(SysYExpression leftExp) {
-            this.leftExp = leftExp;
+            super(leftExp);
         }
 
         public SysYEqExp(Token token, SysYExpression leftExp, SysYExpression rightExp) {
-            this.token = token;
-            this.leftExp = leftExp;
-            this.rightExp = rightExp;
+            super(token, leftExp, rightExp);
         }
     }
 
     public static class SysYLAndExp extends SysYBinaryExp {
-
         public SysYLAndExp(SysYExpression leftExp) {
-            this.leftExp = leftExp;
+            super(leftExp);
         }
 
         public SysYLAndExp(SysYExpression leftExp, SysYExpression rightExp) {
-            this.token = new Token(TokenKind.AND);
-            this.leftExp = leftExp;
-            this.rightExp = rightExp;
+            super(new Token(TokenKind.AND), leftExp, rightExp);
         }
     }
 
     public static class SysYLOrExp extends SysYBinaryExp {
-
         public SysYLOrExp(SysYExpression leftExp) {
-            this.leftExp = leftExp;
+            super(leftExp);
         }
 
         public SysYLOrExp(SysYExpression leftExp, SysYExpression rightExp) {
-            this.token = new Token(TokenKind.OR);
-            this.leftExp = leftExp;
-            this.rightExp = rightExp;
+            super(new Token(TokenKind.OR), leftExp, rightExp);
         }
     }
 
     public static class SysYCond extends SysYExpression {
-        public SysYExpression cond;
+       private final SysYExpression cond;
 
         public SysYCond(SysYExpression cond) { this.cond = cond; }
+
+        public SysYExpression getCond() {
+            return cond;
+        }
 
         @Override
         public ReturnKind getReturnKind(SymbolTable table) throws SysYException {

@@ -17,7 +17,7 @@ public class Tokenizer {
 
     private boolean commentsFlag = false;
     private int line = 0;
-    Tokens.TokenKind tokenKind;
+    private Tokens.TokenKind tokenKind;
 
     public Tokenizer(Tokens tokens, Reader reader, Scanner scanner) {
         this.tokens = tokens;

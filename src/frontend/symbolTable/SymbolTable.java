@@ -12,9 +12,9 @@ public class SymbolTable {
         VOID_FUNC
     }
 
-    public Map<String, SysYSymbol> symbolMap;
-    public SymbolTable parent;
-    public STKind kind;
+    private final Map<String, SysYSymbol> symbolMap;
+    private final SymbolTable parent;
+    private STKind kind;
 
     public SymbolTable(SymbolTable parent, STKind kind) {
         this.parent = parent;
@@ -45,5 +45,13 @@ public class SymbolTable {
             temp = temp.parent;
         }
         return symbol;
+    }
+
+    public SymbolTable getParent() {
+        return parent;
+    }
+
+    public STKind getKind() {
+        return kind;
     }
 }
