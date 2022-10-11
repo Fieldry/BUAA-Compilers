@@ -1,10 +1,10 @@
 package frontend.irBuilder;
 
-import java.util.ArrayList;
-import java.util.List;
+import frontend.inodelist.IList;
+import frontend.inodelist.INode;
 
-public class BasicBlock extends Value {
-    private final List<Instruction> instList = new ArrayList<>();
+public class BasicBlock extends INode {
+    private final IList<Instruction> instList = new IList<>();
     private final String name;
     private final Function parent;
     private Instruction terminator;
@@ -14,16 +14,15 @@ public class BasicBlock extends Value {
         this.parent = parent;
     }
 
-    public List<Instruction> getInstList() { return instList; }
+    public IList<Instruction> getInstList() { return instList; }
 
-    @Override
     public String getName() { return name; }
 
     public Function getParent() { return parent; }
 
     public Instruction getTerminator() { return terminator; }
 
-    public void addInst(Instruction instruction) { instList.add(instruction); }
+    public void addInst(Instruction instruction) { instList.addBack(instruction); }
 
     @Override
     public String toString() {

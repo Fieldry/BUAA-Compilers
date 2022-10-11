@@ -1,4 +1,4 @@
-package frontend.irBuilder;
+package frontend.inodelist;
 
 public class INode {
     private INode prev;
@@ -12,21 +12,34 @@ public class INode {
 
     public void setNext(INode node) { next = node; }
 
+    public INode getPrev() { return prev; }
+
+    public INode getNext() { return next; }
+
     public void insertAfter(INode node) {
-        node.prev = this;
-        node.next = next;
+        if (node != null) {
+            node.prev = this;
+            node.next = next;
+        }
         if(hasNext()) next.prev = node;
         next = node;
     }
 
     public void insertBefore(INode node) {
-        node.prev = prev;
-        node.next = this;
+        if (node != null) {
+            node.prev = prev;
+            node.next = this;
+        }
         if(hasPrev()) prev.next = node;
         prev = node;
     }
 
     public void remove() {
-        
+        if (hasPrev()) {
+            prev.next = next;
+        }
+        if (hasNext()) {
+            next.prev = prev;
+        }
     }
 }

@@ -1,10 +1,10 @@
 package frontend.irBuilder;
 
-import java.util.ArrayList;
-import java.util.List;
+import frontend.inodelist.IList;
+import frontend.inodelist.INode;
 
-public class Function extends GlobalValue {
-    private final List<BasicBlock> basicBlockList = new ArrayList<>();;
+public class Function extends INode {
+    private final IList<BasicBlock> basicBlockList = new IList<>();;
     private final String name;
     private final Module parent;
 
@@ -13,12 +13,11 @@ public class Function extends GlobalValue {
         this.parent = parent;
     }
 
-    public List<BasicBlock> getBBlockList() { return basicBlockList; }
+    public IList<BasicBlock> getBBlockList() { return basicBlockList; }
 
-    @Override
     public String getName() { return name; }
 
     public Module getParent() { return parent; }
 
-    public void addBBlock(BasicBlock block) { basicBlockList.add(block); }
+    public void addBBlock(BasicBlock block) { basicBlockList.addBack(block); }
 }

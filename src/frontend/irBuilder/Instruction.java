@@ -1,9 +1,11 @@
 package frontend.irBuilder;
 
+import frontend.inodelist.INode;
+
 import java.util.Locale;
 
-public abstract class Instruction extends User {
-    BasicBlock parent;
+public abstract class Instruction extends INode {
+    private BasicBlock parent;
 
     public Instruction() {}
 
