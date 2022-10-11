@@ -40,7 +40,7 @@ public class Compiler {
         } catch (SysYException e) {
             if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
-        parser = new Parser(scanner);
+        parser = new Parser(scanner, writer, true);
 
         try {
             compUnit = parser.syntaxAnalyse();
@@ -48,7 +48,7 @@ public class Compiler {
             if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
 
-        /*
+
         if (compUnit != null) {
             try {
                 compUnit.check(new SymbolTable(null), false);
@@ -64,9 +64,9 @@ public class Compiler {
             sort(Comparator.comparingInt(SysYException::getLine));
         }};
         writer.writeErrors(errors);
-         */
-        assert compUnit != null;
-        builder.generateLLVM(compUnit);
+
+        // assert compUnit != null;
+        // builder.generateLLVM(compUnit);
 
         writer.close();
     }

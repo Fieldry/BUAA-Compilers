@@ -111,11 +111,11 @@ public abstract class SysYTree {
 
     /** Variables definitions including const var and var. */
     public static class SysYDef extends SysYSymbol {
-        public boolean isConst;
-        public int dimensions;
-        public SysYExpression firstExp;
-        public SysYExpression secondExp;
-        public SysYExpression init;
+        private final boolean isConst;
+        private final int dimensions;
+        private final SysYExpression firstExp;
+        private final SysYExpression secondExp;
+        private final SysYExpression init;
 
         public SysYDef(boolean isConst, SysYIdentifier ident, int dimensions,
                         SysYExpression firstExp, SysYExpression secondExp, SysYExpression init) {
@@ -126,6 +126,8 @@ public abstract class SysYTree {
             this.secondExp = secondExp;
             this.init = init;
         }
+
+        public boolean isConst() { return isConst; }
 
         public int getDimensions() {
             return dimensions;
@@ -222,8 +224,8 @@ public abstract class SysYTree {
     }
 
     public static class SysYFuncParam extends SysYSymbol {
-        public int dimensions;
-        public SysYExpression secondExp;
+        private final int dimensions;
+        private SysYExpression secondExp;
 
         public SysYFuncParam(SysYIdentifier ident, int dimensions) {
             this.ident = ident;
@@ -234,6 +236,14 @@ public abstract class SysYTree {
             this.ident = ident;
             this.dimensions = dimensions;
             this.secondExp = secondExp;
+        }
+
+        public int getDimensions() {
+            return dimensions;
+        }
+
+        public SysYExpression getSecondExp() {
+            return secondExp;
         }
 
         @Override
@@ -585,7 +595,7 @@ public abstract class SysYTree {
             if (symbol != null) {
                 int calDim;
                 if (symbol instanceof SysYDef) calDim = ((SysYDef) symbol).getDimensions();
-                else if (symbol instanceof SysYFuncParam) calDim = ((SysYFuncParam) symbol).dimensions;
+                else if (symbol instanceof SysYFuncParam) calDim = ((SysYFuncParam) symbol).getDimensions();
                 else throw new SysYException(EKind.o);
 
                 switch (this.dimensions - calDim) {

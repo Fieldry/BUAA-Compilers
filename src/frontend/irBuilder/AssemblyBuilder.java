@@ -45,6 +45,12 @@ public class AssemblyBuilder {
     }
 
     public void visit(SysYCompilationUnit node) {
+        inGlobal = true;
+        for (SysYBlockItem item : node.getDecls()) {
+            visit((SysYDecl) item);
+        }
+
+        inGlobal = false;
         visit((SysYMainFuncDef) node.getMainFuncDef());
     }
 
@@ -59,11 +65,13 @@ public class AssemblyBuilder {
     }
 
     public void visit(SysYBlock node) {
+        builder.createSymbolTable();
         for (int i = 0, len = node.getBlock().size(); i < len; i++) {
             SysYBlockItem blockItem = node.getBlock().get(i);
             if (blockItem instanceof SysYStatement) visit((SysYStatement) blockItem);
             else visit((SysYDecl) blockItem);
         }
+        builder.recallSymbolTable();
     }
 
     public void visit(SysYDecl node) {
@@ -74,13 +82,17 @@ public class AssemblyBuilder {
 
     public void visit(SysYDef node) {
         Instruction inst = null;
-        if (node.isConst) {
+        if (node.isConst()) {
 
         } else {
             switch (node.getDimensions()) {
                 case 0: {
-                    inst = builder.createAllocInst(node.getName());
-                    curBBlock.addInst(inst);
+                    if (inGlobal) {
+
+                    } else {
+                        inst = builder.createAllocInst(node.getName());
+                        curBBlock.addInst(inst);
+                    }
                     // writer.writeln("\t" + inst.toString());
                     break;
                 }
@@ -94,7 +106,6 @@ public class AssemblyBuilder {
 
     public void visit(SysYStatement node) {
         if (node instanceof SysYBlock) {
-            curBBlock = builder.createBlock(curFunction);
             visit((SysYBlock) node);
         } else if (node instanceof SysYReturn) {
             visit((SysYReturn) node);
@@ -108,16 +119,17 @@ public class AssemblyBuilder {
         BranchInst inst = builder.createBranchInst(cond);
         curBBlock.addInst(inst);
 
+        curBBlock = builder.createBlock(curFunction);
         visit(node.getThenStmt());
         curFunction.addBBlock(curBBlock);
         inst.setThenBlock(curBBlock);
 
         if (node.getElseStmt() != null) {
+            curBBlock = builder.createBlock(curFunction);
             visit(node.getElseStmt());
             curFunction.addBBlock(curBBlock);
             inst.setElseBlock(curBBlock);
         }
-        // writer.writeln("\t" + inst);
     }
 
     public void visit(SysYReturn node) {

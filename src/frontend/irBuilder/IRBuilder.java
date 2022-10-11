@@ -4,22 +4,28 @@ import frontend.irBuilder.Instruction.*;
 import frontend.irBuilder.Type.*;
 import frontend.irBuilder.Instruction.BinaryInst.BinaryOp;
 import frontend.token.Tokens.Token;
-
-import java.util.HashMap;
-import java.util.Map;
+import frontend.symbolTable.SymbolValueTable;
 
 public class IRBuilder {
     /** The count of register used.
      */
     private int regCount = 0;
     private BasicBlock block;
-    private final Map<String, Value> symbolTable = new HashMap<>();
+    private SymbolValueTable curTable = new SymbolValueTable(null);
 
     public IRBuilder() {}
 
     private String getRegName() { return "%" + (++regCount); }
 
-    public Value getLValueByName(String name) { return symbolTable.get(name); }
+    public Value getLValueByName(String name) { return curTable.findSymbol(name); }
+
+    public void createSymbolTable() { curTable = new SymbolValueTable(curTable); }
+
+    public void recallSymbolTable() { curTable = curTable.getParent(); }
+
+    public GlobalVariable createGlobalVar(boolean isConst, String name, int value) {
+        return new GlobalVariable(isConst, name, value);
+    }
 
     public BasicBlock createBlock(Function parent) {
         block = new BasicBlock(getRegName(), parent);
@@ -33,20 +39,20 @@ public class IRBuilder {
     public AllocInst createAllocInst(String name) {
         String regName = getRegName();
         Value value = new Value(IntType.i32, regName);
-        symbolTable.put(name, value);
+        curTable.addSymbol(name, value);
         return new AllocInst(block, value);
     }
 
     public MemoryInst createStrInst(String name, Value from) {
-        Value to = symbolTable.get(name);
+        Value to = curTable.findSymbol(name);
         return new MemoryInst(block, 0, from, to);
     }
 
     public MemoryInst createLdInst(String name) {
         String regName = getRegName();
-        Value from = symbolTable.get(name);
+        Value from = curTable.findSymbol(name);
         Value to = new Value(IntType.i32, regName);
-        symbolTable.put(name, to);
+        curTable.addSymbol(name, to);
         return new MemoryInst(block, 1, from, to);
     }
 

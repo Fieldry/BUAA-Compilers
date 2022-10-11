@@ -3,7 +3,7 @@ package frontend.irBuilder;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Module extends Value {
+public class Module extends INode {
     private final List<Function> functionList;
     private final List<GlobalVariable> globalList;
 
