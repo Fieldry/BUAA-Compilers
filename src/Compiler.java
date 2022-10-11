@@ -1,6 +1,6 @@
 import frontend.irBuilder.AssemblyBuilder;
 import frontend.irBuilder.Module;
-import frontend.symbolTable.SymbolTable;
+import frontend.symbolTable.SymbolSysYTable;
 import frontend.exception.SysYException;
 import frontend.token.Tokens;
 import frontend.tree.SysYTree;
@@ -51,7 +51,7 @@ public class Compiler {
 
         if (compUnit != null) {
             try {
-                compUnit.check(new SymbolTable(null), false);
+                compUnit.check(new SymbolSysYTable(null), false);
             } catch (Exception e) {
                 e.printStackTrace();
             }

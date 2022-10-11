@@ -5,7 +5,7 @@ import java.util.HashMap;
 
 import frontend.irBuilder.Value;
 
-public class SymbolValueTable {
+public class SymbolValueTable implements SymbolTable<Value> {
     private final Map<String, Value> symbolMap = new HashMap<>();
     private final SymbolValueTable parent;
 
