@@ -4,6 +4,8 @@ import frontend.tree.SysYTree.*;
 import frontend.irBuilder.Instruction.*;
 import io.Writer;
 
+import java.util.Stack;
+
 public class AssemblyBuilder {
     private final Writer writer;
 
@@ -14,6 +16,7 @@ public class AssemblyBuilder {
     private int constIntValue;
     private boolean isResultInt;
 
+    private final Stack<BasicBlock> loopStack = new Stack<>();
     /** Current function.
      */
     private Function curFunction;
@@ -32,6 +35,9 @@ public class AssemblyBuilder {
 
     public void generateLLVM(SysYCompilationUnit node) {
         visit(node);
+        for (GlobalVariable var : module.getGlobalList()) {
+            writer.writeln(var.toString());
+        }
         for (Function function : module.getFunctionList()) {
             writer.writeln("define i32 @" + function.getName() + "(){");
             for (BasicBlock bBlock : function.getBBlockList()) {
@@ -87,21 +93,20 @@ public class AssemblyBuilder {
         } else {
             switch (node.getDimensions()) {
                 case 0: {
+                    Value value = visit(node.getInit());
                     if (inGlobal) {
-
+                        module.addGlobal(builder.createGlobalVar(node.isConst(), node.getName(), value));
                     } else {
                         inst = builder.createAllocInst(node.getName());
                         curBBlock.addInst(inst);
+                        inst = builder.createStrInst(node.getName(), value);
+                        curBBlock.addInst(inst);
                     }
-                    // writer.writeln("\t" + inst.toString());
                     break;
                 }
             }
         }
-        Value value = visit(node.getInit());
-        inst = builder.createStrInst(node.getName(), value);
-        curBBlock.addInst(inst);
-        // writer.writeln("\t" + inst);
+
     }
 
     public void visit(SysYStatement node) {
@@ -111,7 +116,16 @@ public class AssemblyBuilder {
             visit((SysYReturn) node);
         } else if (node instanceof SysYIf) {
             visit((SysYIf) node);
+        } else if (node instanceof SysYWhile) {
+            visit((SysYWhile) node);
+        } else if (node instanceof SysYAssign) {
+            visit((SysYAssign) node);
         }
+    }
+
+    public void visit(SysYAssign node) {
+        Value value = visit(node.getExpression());
+        curBBlock.addInst(builder.createStrInst(node.getlVal().getName(), value));
     }
 
     public void visit(SysYIf node) {
@@ -120,22 +134,50 @@ public class AssemblyBuilder {
         curBBlock.addInst(inst);
 
         curBBlock = builder.createBlock(curFunction);
-        visit(node.getThenStmt());
         curFunction.addBBlock(curBBlock);
         inst.setThenBlock(curBBlock);
+        visit(node.getThenStmt());
+        if (!loopStack.empty()) {
+            curBBlock.addInst(builder.createBranchInst(loopStack.peek()));
+        }
 
         if (node.getElseStmt() != null) {
             curBBlock = builder.createBlock(curFunction);
-            visit(node.getElseStmt());
             curFunction.addBBlock(curBBlock);
             inst.setElseBlock(curBBlock);
+            visit(node.getElseStmt());
         }
+    }
+
+    public void visit(SysYWhile node) {
+        curBBlock = builder.createBlock(curFunction);
+        curFunction.addBBlock(curBBlock);
+        Value cond = visit(node.getCond());
+        BranchInst inst = builder.createBranchInst(cond);
+        curBBlock.addInst(inst);
+
+        // push loop block into stack
+        loopStack.push(curBBlock);
+
+        curBBlock = builder.createBlock(curFunction);
+        curFunction.addBBlock(curBBlock);
+        inst.setThenBlock(curBBlock);
+        visit(node.getStmt());
+        if (!loopStack.empty()) {
+            curBBlock.addInst(builder.createBranchInst(loopStack.peek()));
+        }
+
+        curBBlock = builder.createBlock(curFunction);
+        curFunction.addBBlock(curBBlock);
+        inst.setElseBlock(curBBlock);
+
+        // pop stack
+        loopStack.pop();
     }
 
     public void visit(SysYReturn node) {
         RetInst inst = builder.createRetInst(visit(node.getExpression()));
         curBBlock.addInst(inst);
-        // writer.writeln("\t" + inst.toString());
     }
 
     public Value visit(SysYExpression node) {
@@ -172,7 +214,7 @@ public class AssemblyBuilder {
     }
 
     public Value visit(SysYBinaryExp node) {
-        BinaryInst inst = null;
+        BinaryInst inst;
         if (node.getToken() == null) {
             return visit(node.getLeftExp());
         } else {
@@ -180,8 +222,6 @@ public class AssemblyBuilder {
             inst = builder.createBinaryInst(node.getToken(), lValue, rValue);
         }
         curBBlock.addInst(inst);
-        assert inst != null;
-        // writer.writeln("\t" + inst);
         return inst.getResValue();
     }
 

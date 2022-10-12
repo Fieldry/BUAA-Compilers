@@ -285,13 +285,17 @@ public abstract class SysYTree {
     }
 
     public static class SysYAssign extends SysYStatement {
-        public SysYLVal lVal;
-        public SysYExpression expression;
+        private final SysYLVal lVal;
+        private final SysYExpression expression;
 
         public SysYAssign(SysYLVal lVal, SysYExpression expression) {
             this.lVal = lVal;
             this.expression = expression;
         }
+
+        public SysYLVal getlVal() { return lVal; }
+
+        public SysYExpression getExpression() { return expression; }
 
         @Override
         public SymbolSysYTable check(SymbolSysYTable table, boolean inLoop) {
@@ -370,12 +374,20 @@ public abstract class SysYTree {
     }
 
     public static class SysYWhile extends SysYStatement {
-        public SysYExpression cond;
-        public SysYStatement stmt;
+        private final SysYExpression cond;
+        private final SysYStatement stmt;
 
         public SysYWhile(SysYExpression cond, SysYStatement stmt) {
             this.cond = cond;
             this.stmt = stmt;
+        }
+
+        public SysYExpression getCond() {
+            return cond;
+        }
+
+        public SysYStatement getStmt() {
+            return stmt;
         }
 
         @Override

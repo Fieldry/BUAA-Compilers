@@ -23,7 +23,8 @@ public class IRBuilder {
 
     public void recallSymbolTable() { curTable = curTable.getParent(); }
 
-    public GlobalVariable createGlobalVar(boolean isConst, String name, int value) {
+    public GlobalVariable createGlobalVar(boolean isConst, String name, Value value) {
+        curTable.addSymbol('@' + name, new Value(PointerType.i32, "@"+name));
         return new GlobalVariable(isConst, name, value);
     }
 
@@ -36,21 +37,24 @@ public class IRBuilder {
         return new BranchInst(block, cond);
     }
 
+    public BranchInst createBranchInst(BasicBlock target) { return new BranchInst(block, target); }
+
     public AllocInst createAllocInst(String name) {
         String regName = getRegName();
-        Value value = new Value(IntType.i32, regName);
-        curTable.addSymbol(name, value);
+        Value value = new Value(PointerType.i32, regName);
+        curTable.addSymbol('*' + name, value);
         return new AllocInst(block, value);
     }
 
     public MemoryInst createStrInst(String name, Value from) {
-        Value to = curTable.findSymbol(name);
+        Value to = curTable.findSymbolInAll('*' + name);
         return new MemoryInst(block, 0, from, to);
     }
 
     public MemoryInst createLdInst(String name) {
         String regName = getRegName();
-        Value from = curTable.findSymbol(name);
+        Value from = curTable.findSymbolInAll('*' + name);
+        if (from == null) from = curTable.findSymbolInAll('@' + name);
         Value to = new Value(IntType.i32, regName);
         curTable.addSymbol(name, to);
         return new MemoryInst(block, 1, from, to);
@@ -108,6 +112,16 @@ public class IRBuilder {
             case LSS: {
                 user = new User(IntType.i1, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.SLT, lValue, rValue, user);
+                break;
+            }
+            case EQL: {
+                user = new User(IntType.i1, regName, lValue, rValue);
+                res = new BinaryInst(block, BinaryOp.EQ, lValue, rValue, user);
+                break;
+            }
+            case NEQ: {
+                user = new User(IntType.i1, regName, lValue, rValue);
+                res = new BinaryInst(block, BinaryOp.NE, lValue, rValue, user);
                 break;
             }
             default: {

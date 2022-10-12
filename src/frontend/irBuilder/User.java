@@ -1,10 +1,9 @@
 package frontend.irBuilder;
 
-import java.util.ArrayList;
-import java.util.List;
+import frontend.inodelist.IList;
 
 public class User extends Value {
-    protected final List<Use> operandList = new ArrayList<>();
+    private final IList<Use> operandList = new IList<>();
 
     public User() {}
 
@@ -18,9 +17,7 @@ public class User extends Value {
         addOperand(rValue);
     }
 
-    public void addOperand(Value value) { operandList.add(new Use(this, value)); }
-
-    public Use getOperand(int index) { return operandList.get(index); }
+    public void addOperand(Value value) { operandList.addBack(new Use(this, value)); }
 
     public int getNumOperands() { return operandList.size(); }
 }

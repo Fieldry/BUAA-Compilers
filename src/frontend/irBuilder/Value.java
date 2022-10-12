@@ -1,10 +1,10 @@
 package frontend.irBuilder;
 
-import java.util.ArrayList;
-import java.util.List;
+import frontend.inodelist.IList;
+import frontend.inodelist.INode;
 
-public class Value {
-    protected final List<Use> useList = new ArrayList<>();
+public class Value extends INode {
+    private final IList<Use> useList = new IList<>();
     protected Type type;
     protected String name;
 
@@ -15,15 +15,9 @@ public class Value {
         this.name = name;
     }
 
-    public Value(Type type, String name, User user) {
-        this.type = type;
-        this.name = name;
-        addUse(new Use(user, this));
-    }
+    public void addUse(User user) { useList.addBack(new Use(user, this)); }
 
-    public void addUse(User user) { useList.add(new Use(user, this)); }
-
-    public void addUse(Use use) { useList.add(use); }
+    public void addUse(Use use) { useList.addBack(use); }
 
     public int useSize() { return useList.size(); }
 

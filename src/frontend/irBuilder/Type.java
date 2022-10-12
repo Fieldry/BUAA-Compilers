@@ -13,17 +13,21 @@ public abstract class Type {
 
         public IntType() { this.bit = 32; }
 
-        public int getBit() { return this.bit; }
+        @Override
+        public String toString() { return "i" + bit; }
+    }
+
+    public static class PointerType extends Type {
+        private final int bit;
+        public static final PointerType i32 = new PointerType();
+
+        public PointerType() { this.bit = 32; }
 
         @Override
-        public String toString() {
-            return String.format("i%d", bit);
-        }
+        public String toString() { return "i" + bit + "*"; }
     }
-    public static class FuncType extends Type {
 
-    }
-    public static class PointerType extends Type {
+    public static class LabelType extends Type {
 
     }
     public static class ArrayType extends Type {

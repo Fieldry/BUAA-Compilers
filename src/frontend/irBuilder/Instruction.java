@@ -1,10 +1,8 @@
 package frontend.irBuilder;
 
-import frontend.inodelist.INode;
-
 import java.util.Locale;
 
-public abstract class Instruction extends INode {
+public abstract class Instruction extends User {
     private BasicBlock parent;
 
     public Instruction() {}
@@ -130,8 +128,8 @@ public abstract class Instruction extends INode {
 
         @Override
         public String toString() {
-            if (flag == 1) return to + " = load " + to.getType() + ", " + from.getType() + "* " + from;
-            else return "store " + from.getType() + " " + from + ", " + to.getType() + "* " + to;
+            if (flag == 1) return to + " = load " + to.getType() + ", " + from.getType() + " " + from;
+            else return "store " + from.getType() + " " + from + ", " + to.getType() + " " + to;
         }
     }
 
@@ -182,11 +180,11 @@ public abstract class Instruction extends INode {
             this.cond = cond;
         }
 
-        public BranchInst(BasicBlock parent, Value cond, BasicBlock thenBlock, BasicBlock elseBlock) {
+        public BranchInst(BasicBlock parent, BasicBlock block) {
             super(parent);
-            this.cond = cond;
-            this.thenBlock = thenBlock;
-            this.elseBlock = elseBlock;
+            this.cond = null;
+            this.thenBlock = block;
+            this.elseBlock = null;
         }
 
         public Value getCond() {
@@ -211,7 +209,9 @@ public abstract class Instruction extends INode {
 
         @Override
         public String toString() {
-            return "br " + cond.getType() + " " + cond + ", label " + thenBlock + ", label " + elseBlock;
+            if (cond != null)
+                return "br " + cond.getType() + " " + cond + ", label " + thenBlock + ", label " + elseBlock;
+            else return "br " + thenBlock;
         }
     }
 }

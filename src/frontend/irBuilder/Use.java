@@ -1,6 +1,8 @@
 package frontend.irBuilder;
 
-public class Use {
+import frontend.inodelist.INode;
+
+public class Use extends INode {
     User user;
     Value value;
 

@@ -1,9 +1,8 @@
 package frontend.irBuilder;
 
 import frontend.inodelist.IList;
-import frontend.inodelist.INode;
 
-public class BasicBlock extends INode {
+public class BasicBlock extends Value {
     private final IList<Instruction> instList = new IList<>();
     private final String name;
     private final Function parent;
