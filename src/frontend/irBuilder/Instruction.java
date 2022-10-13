@@ -98,7 +98,7 @@ public abstract class Instruction extends User {
 
         @Override
         public String toString() {
-            return "ret " + type + " " + value;
+            return "ret " + type + (value != null ? " " + value : "");
         }
     }
 
@@ -218,12 +218,13 @@ public abstract class Instruction extends User {
 
     public static class FuncCallInst extends Instruction {
         private final Function function;
-        private final ArrayList<Value> values = new ArrayList<>();
+        private final ArrayList<Value> params;
         private final Value resValue;
 
-        public FuncCallInst(BasicBlock parent, Function function, Value resValue) {
+        public FuncCallInst(BasicBlock parent, Function function, ArrayList<Value> params, Value resValue) {
             super(parent);
             this.function = function;
+            this.params = params;
             this.resValue = resValue;
         }
 
@@ -231,8 +232,19 @@ public abstract class Instruction extends User {
 
         @Override
         public String toString() {
-            String prefix = resValue == null ? "" : resValue + " = ";
-            return prefix + "call " + function.getType() + " " + function.getName() + "()";
+            String res = (resValue == null ? "" : resValue + " = ")
+                    + "call " + function.getType() + " " + function.getName() + "(";
+
+            if (!params.isEmpty()) {
+                Value value = params.get(0);
+                res = res + value.getType() + " " + value;
+                if (params.size() > 1) for (int i = 1, len = params.size(); i < len; i++) {
+                    value = params.get(i);
+                    res = res + ", " + value.getType() + " " + value;
+                }
+            }
+
+            return res + ")";
         }
     }
 }

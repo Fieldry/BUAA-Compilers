@@ -5,22 +5,22 @@ import frontend.irBuilder.Type.*;
 import frontend.irBuilder.Instruction.BinaryInst.BinaryOp;
 import frontend.token.Tokens.Token;
 import frontend.symbolTable.SymbolValueTable;
-import frontend.tree.SysYTree;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class IRBuilder {
     /** The count of register used.
      */
-    private int regCount = 0;
+    private int labelCount = 0;
     private BasicBlock block;
     private SymbolValueTable curTable = new SymbolValueTable(null);
 
     public IRBuilder() {}
 
-    private String getRegName() { return "%" + (++regCount); }
+    private String getRegName() { return "%" + (++labelCount); }
 
-    public Value getLValueByName(String name) { return curTable.findSymbol(name); }
+    private String getBlockName() { return "" + (++labelCount); }
 
     public void createSymbolTable() { curTable = new SymbolValueTable(curTable); }
 
@@ -33,7 +33,7 @@ public class IRBuilder {
 
     public Function createFunction(boolean returnInt, String name, Module parent) {
         name = '@' + name;
-        regCount = -1;
+        labelCount = -1;
         Type type = returnInt ? IntType.i32 : VoidType.vd;
         Function function = new Function(type, name, parent);
         curTable.addSymbol(name, function);
@@ -47,7 +47,7 @@ public class IRBuilder {
     }
 
     public BasicBlock createBlock(Function parent) {
-        block = new BasicBlock(getRegName(), parent);
+        block = new BasicBlock(getBlockName(), parent);
         return block;
     }
 
@@ -59,13 +59,13 @@ public class IRBuilder {
 
     public AllocInst createAllocInst(String name) {
         String regName = getRegName();
-        Value value = new Value(PointerType.i32, regName);
-        curTable.addSymbol('*' + name, value);
-        return new AllocInst(block, value);
+        curTable.addSymbol('*' + name, new Value(PointerType.i32, regName));
+        return new AllocInst(block, new Value(IntType.i32, regName));
     }
 
     public MemoryInst createStrInst(String name, Value from) {
         Value to = curTable.findSymbolInAll('*' + name);
+        if (to == null) to = curTable.findSymbolInAll('@' + name);
         return new MemoryInst(block, 0, from, to);
     }
 
@@ -79,10 +79,10 @@ public class IRBuilder {
     }
 
     public RetInst createRetInst(Value value) {
-        return new RetInst(IntType.i32, value);
+        return value == null ? new RetInst(VoidType.vd, null) : new RetInst(IntType.i32, value);
     }
 
-    public FuncCallInst createFuncCallInst(String name) {
+    public FuncCallInst createFuncCallInst(String name, ArrayList<Value> params) {
         Function function = (Function) curTable.findSymbolInAll('@' + name);
 
         User user;
@@ -91,7 +91,7 @@ public class IRBuilder {
             user.addOperand(function);
             function.addUse(user);
         } else user = null;
-        return new FuncCallInst(block, function, user);
+        return new FuncCallInst(block, function, params, user);
     }
 
     public BinaryInst createBinaryInst(Token token, Value lValue, Value rValue) {

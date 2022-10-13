@@ -1,9 +1,12 @@
 package frontend.irBuilder;
 
+import frontend.tree.SysYTree;
 import frontend.tree.SysYTree.*;
 import frontend.irBuilder.Instruction.*;
+import frontend.irBuilder.LoopRecord.Pair;
 import io.Writer;
 
+import java.util.ArrayList;
 import java.util.Stack;
 
 public class AssemblyBuilder {
@@ -12,11 +15,7 @@ public class AssemblyBuilder {
     private final Module module;
     private final IRBuilder builder = new IRBuilder();
 
-    private Value value;
-    private int constIntValue;
-    private boolean isResultInt;
-
-    private final Stack<BasicBlock> loopStack = new Stack<>();
+    private final Stack<LoopRecord> loopStack = new Stack<>();
     /** Current function.
      */
     private Function curFunction;
@@ -38,16 +37,33 @@ public class AssemblyBuilder {
         for (GlobalVariable var : module.getGlobalList()) {
             writer.writeln(var.toString());
         }
+        writer.writeln("");
         for (Function function : module.getFunctionList()) {
-            writer.writeln("define i32 @" + function.getName() + "(){");
+            writer.writeln(function + "{");
             for (BasicBlock bBlock : function.getBBlockList()) {
                 writer.writeln(bBlock.getName() + ":");
                 for (Instruction inst : bBlock.getInstList()) {
                     writer.writeln("\t" + inst);
                 }
+                writer.writeln("\t" + bBlock.getTerminator());
             }
             writer.writeln("}");
+            writer.writeln("");
         }
+    }
+
+    /*------------------------------
+        Helper functions
+     -----------------------------*/
+
+    private BasicBlock createNewBlock(boolean set) {
+        BasicBlock temp = curBBlock;
+        curBBlock = builder.createBlock(curFunction);
+        curFunction.addBBlock(curBBlock);
+        if (set && temp.getTerminator() == null) {
+            temp.setTerminator(builder.createBranchInst(curBBlock));
+        }
+        return temp;
     }
 
     public void visit(SysYCompilationUnit node) {
@@ -55,29 +71,53 @@ public class AssemblyBuilder {
         for (SysYBlockItem item : node.getDecls()) {
             visit((SysYDecl) item);
         }
-
+        for (SysYSymbol symbol : node.getFuncDefs()) {
+            visit((SysYFuncDef) symbol);
+        }
         inGlobal = false;
         visit((SysYMainFuncDef) node.getMainFuncDef());
     }
 
-    public void visit(SysYMainFuncDef node) {
-
-        curFunction = new Function("main", module);
+    public void visit(SysYFuncDef node) {
+        curFunction = builder.createFunction(node.isReturnInt(), node.getName(), module);
         module.addFunction(curFunction);
-        curBBlock = new BasicBlock("main", curFunction);
-        curFunction.addBBlock(curBBlock);
-        visit((SysYBlock) node.getBlock());
 
+        builder.createSymbolTable();
+        for (SysYTree.SysYSymbol symbol : node.getFuncParams()) {
+            Value value = builder.createFParam(symbol.getName(), ((SysYFuncParam) symbol).getDimensions());
+            curFunction.addParam(value);
+        }
+        curBBlock = builder.createBlock(curFunction);
+        curFunction.addBBlock(curBBlock);
+        for (SysYTree.SysYSymbol symbol : node.getFuncParams()) {
+            curBBlock.addInst(builder.createAllocInst(symbol.getName()));
+        }
+        for (int i = 0, len = node.getFuncParams().size(); i < len; i++) {
+            SysYSymbol symbol = node.getFuncParams().get(i);
+            Value value = curFunction.getParams().get(i);
+            curBBlock.addInst(builder.createStrInst(symbol.getName(), value));
+        }
+        visit((SysYBlock) node.getBlock());
+        builder.recallSymbolTable();
+    }
+
+    public void visit(SysYMainFuncDef node) {
+        curFunction = builder.createFunction(true, "main", module);
+        module.addFunction(curFunction);
+        curBBlock = builder.createBlock(curFunction);
+        curFunction.addBBlock(curBBlock);
+
+        builder.createSymbolTable();
+        visit((SysYBlock) node.getBlock());
+        builder.recallSymbolTable();
     }
 
     public void visit(SysYBlock node) {
-        builder.createSymbolTable();
         for (int i = 0, len = node.getBlock().size(); i < len; i++) {
             SysYBlockItem blockItem = node.getBlock().get(i);
             if (blockItem instanceof SysYStatement) visit((SysYStatement) blockItem);
             else visit((SysYDecl) blockItem);
         }
-        builder.recallSymbolTable();
     }
 
     public void visit(SysYDecl node) {
@@ -88,30 +128,40 @@ public class AssemblyBuilder {
 
     public void visit(SysYDef node) {
         Instruction inst = null;
-        if (node.isConst()) {
+        if (node.isConst() && inGlobal) {
+            switch (node.getDimensions()) {
+                case 0:{
 
-        } else {
+                    break;
+                }
+            }
+        } else if (inGlobal) {
             switch (node.getDimensions()) {
                 case 0: {
                     Value value = visit(node.getInit());
-                    if (inGlobal) {
-                        module.addGlobal(builder.createGlobalVar(node.isConst(), node.getName(), value));
-                    } else {
-                        inst = builder.createAllocInst(node.getName());
-                        curBBlock.addInst(inst);
-                        inst = builder.createStrInst(node.getName(), value);
-                        curBBlock.addInst(inst);
-                    }
+                    module.addGlobal(builder.createGlobalVar(node.isConst(), node.getName(), value));
+                    break;
+                }
+            }
+        } else {
+            switch (node.getDimensions()) {
+                case 0: {
+                    inst = builder.createAllocInst(node.getName());
+                    curBBlock.addInst(inst);
+                    Value value = visit(node.getInit());
+                    inst = builder.createStrInst(node.getName(), value);
+                    curBBlock.addInst(inst);
                     break;
                 }
             }
         }
-
     }
 
     public void visit(SysYStatement node) {
         if (node instanceof SysYBlock) {
+            builder.createSymbolTable();
             visit((SysYBlock) node);
+            builder.recallSymbolTable();
         } else if (node instanceof SysYReturn) {
             visit((SysYReturn) node);
         } else if (node instanceof SysYIf) {
@@ -120,7 +170,17 @@ public class AssemblyBuilder {
             visit((SysYWhile) node);
         } else if (node instanceof SysYAssign) {
             visit((SysYAssign) node);
+        } else if (node instanceof SysYContinue) {
+            visit((SysYContinue) node);
+        } else if (node instanceof SysYBreak) {
+            visit((SysYBreak) node);
+        } else if (node instanceof SysYExpressionStatement) {
+            visit((SysYExpressionStatement) node);
         }
+    }
+
+    public void visit(SysYExpressionStatement node) {
+        if (!node.isEmpty()) visit(node.getExp());
     }
 
     public void visit(SysYAssign node) {
@@ -129,59 +189,84 @@ public class AssemblyBuilder {
     }
 
     public void visit(SysYIf node) {
+        // main block
         Value cond = visit(node.getCond());
         BranchInst inst = builder.createBranchInst(cond);
-        curBBlock.addInst(inst);
+        curBBlock.setTerminator(inst);
 
-        curBBlock = builder.createBlock(curFunction);
-        curFunction.addBBlock(curBBlock);
+        // first if block
+        createNewBlock(false);
         inst.setThenBlock(curBBlock);
         visit(node.getThenStmt());
-        if (!loopStack.empty()) {
-            curBBlock.addInst(builder.createBranchInst(loopStack.peek()));
-        }
 
+
+        createNewBlock(false);
+        inst.setElseBlock(curBBlock);
         if (node.getElseStmt() != null) {
-            curBBlock = builder.createBlock(curFunction);
-            curFunction.addBBlock(curBBlock);
-            inst.setElseBlock(curBBlock);
+            // second if block
             visit(node.getElseStmt());
+
+            // block after if statement
+            createNewBlock(true);
+            inst.getThenBlock().setTerminator(builder.createBranchInst(curBBlock));
+            if (inst.getElseBlock().getTerminator() == null)
+                inst.getElseBlock().setTerminator(builder.createBranchInst(curBBlock));
+        } else {
+            // block after if statement
+            inst.getThenBlock().setTerminator(builder.createBranchInst(curBBlock));
         }
     }
 
     public void visit(SysYWhile node) {
-        curBBlock = builder.createBlock(curFunction);
-        curFunction.addBBlock(curBBlock);
+        createNewBlock(true);
+
+        // condition block
         Value cond = visit(node.getCond());
         BranchInst inst = builder.createBranchInst(cond);
-        curBBlock.addInst(inst);
+        curBBlock.setTerminator(inst);
 
         // push loop block into stack
-        loopStack.push(curBBlock);
+        loopStack.push(new LoopRecord());
 
-        curBBlock = builder.createBlock(curFunction);
-        curFunction.addBBlock(curBBlock);
+        // loop body
+        BasicBlock condBlock = createNewBlock(false);
         inst.setThenBlock(curBBlock);
         visit(node.getStmt());
-        if (!loopStack.empty()) {
-            curBBlock.addInst(builder.createBranchInst(loopStack.peek()));
-        }
+        curBBlock.setTerminator(builder.createBranchInst(condBlock));
 
-        curBBlock = builder.createBlock(curFunction);
-        curFunction.addBBlock(curBBlock);
+        // block after loop
+        createNewBlock(false);
         inst.setElseBlock(curBBlock);
+
+        // handle continue and break
+        for (Pair pair : loopStack.peek().getRecords()) {
+            if (pair.getString().equals("Continue")) {
+                pair.getBlock().setTerminator(builder.createBranchInst(condBlock));
+            } else {
+                pair.getBlock().setTerminator(builder.createBranchInst(curBBlock));
+            }
+        }
 
         // pop stack
         loopStack.pop();
     }
 
+    public void visit(SysYContinue node) {
+        loopStack.peek().add("Continue", curBBlock);
+    }
+
+    public void visit(SysYBreak node) {
+        loopStack.peek().add("Break", curBBlock);
+    }
+
     public void visit(SysYReturn node) {
         RetInst inst = builder.createRetInst(visit(node.getExpression()));
-        curBBlock.addInst(inst);
+        curBBlock.setTerminator(inst);
     }
 
     public Value visit(SysYExpression node) {
-        if (node instanceof SysYUnaryExp) {
+        if (node == null) return null;
+        else if (node instanceof SysYUnaryExp) {
             return visit((SysYUnaryExp) node);
         } else if (node instanceof SysYBinaryExp) {
             return visit((SysYBinaryExp) node);
@@ -192,9 +277,21 @@ public class AssemblyBuilder {
         } else if (node instanceof SysYCond) {
             return visit((SysYCond) node);
         } else if (node instanceof SysYLVal) {
-            return visit((SysYLVal) node, true);
+            return visit((SysYLVal) node);
+        } else if (node instanceof SysYFuncCall) {
+            return visit((SysYFuncCall) node);
         }
         return null;
+    }
+
+    public Value visit(SysYFuncCall node) {
+        ArrayList<Value> params = new ArrayList<>();
+        for (SysYExpression exp : node.getFuncRParams()) {
+            params.add(visit(exp));
+        }
+        FuncCallInst inst = builder.createFuncCallInst(node.getName(), params);
+        curBBlock.addInst(inst);
+        return inst.getResValue();
     }
 
     public Value visit(SysYUnaryExp node) {
@@ -208,8 +305,6 @@ public class AssemblyBuilder {
             }
         }
         curBBlock.addInst(inst);
-        assert inst != null;
-        // writer.writeln("\t" + inst);
         return inst.getResValue();
     }
 
@@ -233,15 +328,12 @@ public class AssemblyBuilder {
         return visit(node.getExpression().get(0));
     }
 
-    public Value visit(SysYLVal node, boolean load) {
+    public Value visit(SysYLVal node) {
         MemoryInst inst = null;
         switch (node.getDimensions()) {
             case 0: {
-                if (load) {
-                    inst = builder.createLdInst(node.getName());
-                    curBBlock.addInst(inst);
-                }
-                return builder.getLValueByName(node.getName());
+                inst = builder.createLdInst(node.getName());
+                curBBlock.addInst(inst);
             }
         }
         return inst.getTo();

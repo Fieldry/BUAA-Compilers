@@ -20,4 +20,6 @@ public class User extends Value {
     public void addOperand(Value value) { operandList.addBack(new Use(this, value)); }
 
     public int getNumOperands() { return operandList.size(); }
+
+    public IList<Use> getOperandList() { return operandList; }
 }

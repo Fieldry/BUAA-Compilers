@@ -475,8 +475,8 @@ public abstract class SysYTree {
     }
 
     public static class SysYExpressionStatement extends SysYExpression {
-        public SysYExpression exp;
-        public boolean isEmpty;
+        private final SysYExpression exp;
+        private final boolean isEmpty;
 
         public SysYExpressionStatement() {
             exp = null;
@@ -487,6 +487,10 @@ public abstract class SysYTree {
             this.exp = exp;
             isEmpty = false;
         }
+
+        public boolean isEmpty() { return isEmpty; }
+
+        public SysYExpression getExp() { return exp; }
 
         @Override
         public SymbolSysYTable check(SymbolSysYTable table, boolean inLoop) {

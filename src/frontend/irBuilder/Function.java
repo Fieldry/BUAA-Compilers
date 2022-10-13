@@ -35,6 +35,7 @@ public class Function extends GlobalValue {
             Value value = params.get(0);
             res = res + value.getType() + " " + value;
             if (params.size() > 1) for (int i = 1, len = params.size(); i < len; i++) {
+                value = params.get(i);
                 res = res + ", " + value.getType() + " " + value;
             }
         }
