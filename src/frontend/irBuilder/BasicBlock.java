@@ -11,6 +11,7 @@ public class BasicBlock extends Value {
     public BasicBlock(String name, Function parent) {
         this.name = name;
         this.parent = parent;
+        terminator = null;
     }
 
     public IList<Instruction> getInstList() { return instList; }
@@ -22,6 +23,8 @@ public class BasicBlock extends Value {
     public Instruction getTerminator() { return terminator; }
 
     public void addInst(Instruction instruction) { instList.addBack(instruction); }
+
+    public void setTerminator(Instruction terminator) { this.terminator = terminator; }
 
     @Override
     public String toString() {

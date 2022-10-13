@@ -187,15 +187,27 @@ public abstract class SysYTree {
 
     /** Function definitions including void and int. */
     public static class SysYFuncDef extends SysYSymbol {
-        public boolean returnInt;
-        public List<SysYSymbol> funcParams;
-        public SysYStatement block;
+        private final boolean returnInt;
+        private final List<SysYSymbol> funcParams;
+        private final SysYStatement block;
 
         public SysYFuncDef(boolean returnInt, SysYIdentifier ident, List<SysYSymbol> funcParams, SysYStatement block) {
             this.returnInt = returnInt;
             this.ident = ident;
             this.funcParams = funcParams == null ? new ArrayList<>() : funcParams;
             this.block = block;
+        }
+
+        public boolean isReturnInt() {
+            return returnInt;
+        }
+
+        public List<SysYSymbol> getFuncParams() {
+            return funcParams;
+        }
+
+        public SysYStatement getBlock() {
+            return block;
         }
 
         @Override
@@ -213,10 +225,8 @@ public abstract class SysYTree {
             }
             SymbolSysYTable sub = new SymbolSysYTable(table,
                     returnInt ? STKind.INT_FUNC : STKind.VOID_FUNC);
-            if (funcParams != null) {
-                for (SysYSymbol param : funcParams) {
-                    if (param != null) sub = param.check(sub, inLoop);
-                }
+            for (SysYSymbol param : funcParams) {
+                if (param != null) sub = param.check(sub, inLoop);
             }
             if (block != null) block.check(sub, inLoop);
             return table;
@@ -631,6 +641,14 @@ public abstract class SysYTree {
         public SysYFuncCall(SysYIdentifier ident, List<SysYExpression> funcParams) {
             this.ident = ident;
             this.funcRParams = funcParams == null ? new ArrayList<>() : funcParams;
+        }
+
+        public String getName() {
+            return ident.getValue();
+        }
+
+        public List<SysYExpression> getFuncRParams() {
+            return funcRParams;
         }
 
         @Override

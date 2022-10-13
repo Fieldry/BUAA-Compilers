@@ -6,6 +6,7 @@ public class GlobalVariable extends GlobalValue {
     private final Value value;
 
     public GlobalVariable(boolean isConst, String name, Value value) {
+        super(Type.IntType.i32);
         this.isConst = isConst;
         this.name = name;
         this.value = value;

@@ -1,5 +1,6 @@
 package frontend.irBuilder;
 
+import java.util.ArrayList;
 import java.util.Locale;
 
 public abstract class Instruction extends User {
@@ -212,6 +213,26 @@ public abstract class Instruction extends User {
             if (cond != null)
                 return "br " + cond.getType() + " " + cond + ", label " + thenBlock + ", label " + elseBlock;
             else return "br " + thenBlock;
+        }
+    }
+
+    public static class FuncCallInst extends Instruction {
+        private final Function function;
+        private final ArrayList<Value> values = new ArrayList<>();
+        private final Value resValue;
+
+        public FuncCallInst(BasicBlock parent, Function function, Value resValue) {
+            super(parent);
+            this.function = function;
+            this.resValue = resValue;
+        }
+
+        public Value getResValue() { return resValue; }
+
+        @Override
+        public String toString() {
+            String prefix = resValue == null ? "" : resValue + " = ";
+            return prefix + "call " + function.getType() + " " + function.getName() + "()";
         }
     }
 }

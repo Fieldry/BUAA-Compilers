@@ -5,6 +5,9 @@ import frontend.irBuilder.Type.*;
 import frontend.irBuilder.Instruction.BinaryInst.BinaryOp;
 import frontend.token.Tokens.Token;
 import frontend.symbolTable.SymbolValueTable;
+import frontend.tree.SysYTree;
+
+import java.util.List;
 
 public class IRBuilder {
     /** The count of register used.
@@ -24,8 +27,23 @@ public class IRBuilder {
     public void recallSymbolTable() { curTable = curTable.getParent(); }
 
     public GlobalVariable createGlobalVar(boolean isConst, String name, Value value) {
-        curTable.addSymbol('@' + name, new Value(PointerType.i32, "@"+name));
+        curTable.addSymbol('@' + name, new Value(PointerType.i32, "@" + name));
         return new GlobalVariable(isConst, name, value);
+    }
+
+    public Function createFunction(boolean returnInt, String name, Module parent) {
+        name = '@' + name;
+        regCount = -1;
+        Type type = returnInt ? IntType.i32 : VoidType.vd;
+        Function function = new Function(type, name, parent);
+        curTable.addSymbol(name, function);
+        return function;
+    }
+
+    public Value createFParam(String name, int dimension) {
+        Value value = new Value(IntType.i32, getRegName());
+        curTable.addSymbol(name, value);
+        return value;
     }
 
     public BasicBlock createBlock(Function parent) {
@@ -62,6 +80,18 @@ public class IRBuilder {
 
     public RetInst createRetInst(Value value) {
         return new RetInst(IntType.i32, value);
+    }
+
+    public FuncCallInst createFuncCallInst(String name) {
+        Function function = (Function) curTable.findSymbolInAll('@' + name);
+
+        User user;
+        if (function.getType().equals(IntType.i32)) {
+            user = new User(IntType.i32, getRegName());
+            user.addOperand(function);
+            function.addUse(user);
+        } else user = null;
+        return new FuncCallInst(block, function, user);
     }
 
     public BinaryInst createBinaryInst(Token token, Value lValue, Value rValue) {

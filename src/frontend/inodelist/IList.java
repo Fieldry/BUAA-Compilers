@@ -68,6 +68,7 @@ public class IList<T extends INode> implements Iterable<T> {
             }
 
             @Override
+            @SuppressWarnings("unchecked")
             public T next() {
                 T temp = cursor;
                 cursor = (T) cursor.getNext();

@@ -2,7 +2,12 @@ package frontend.irBuilder;
 
 public abstract class Type {
     public static class VoidType extends Type {
+        public static final VoidType vd = new VoidType();
 
+        @Override
+        public String toString() {
+            return "void";
+        }
     }
     public static class IntType extends Type {
         private final int bit;
