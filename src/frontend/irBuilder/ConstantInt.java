@@ -12,7 +12,7 @@ public class ConstantInt extends Constant {
 
     @Override
     public Type getType() {
-        return new Type.IntType();
+        return Type.IntType.i32;
     }
 
     @Override

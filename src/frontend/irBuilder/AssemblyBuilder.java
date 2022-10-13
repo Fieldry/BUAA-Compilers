@@ -127,15 +127,7 @@ public class AssemblyBuilder {
     }
 
     public void visit(SysYDef node) {
-        Instruction inst = null;
-        if (node.isConst() && inGlobal) {
-            switch (node.getDimensions()) {
-                case 0:{
-
-                    break;
-                }
-            }
-        } else if (inGlobal) {
+        if (inGlobal) {
             switch (node.getDimensions()) {
                 case 0: {
                     Value value = visit(node.getInit());
@@ -146,11 +138,9 @@ public class AssemblyBuilder {
         } else {
             switch (node.getDimensions()) {
                 case 0: {
-                    inst = builder.createAllocInst(node.getName());
-                    curBBlock.addInst(inst);
+                    builder.createAllocInst(node.getName());
                     Value value = visit(node.getInit());
-                    inst = builder.createStrInst(node.getName(), value);
-                    curBBlock.addInst(inst);
+                    builder.createStrInst(node.getName(), value);
                     break;
                 }
             }
@@ -185,7 +175,7 @@ public class AssemblyBuilder {
 
     public void visit(SysYAssign node) {
         Value value = visit(node.getExpression());
-        curBBlock.addInst(builder.createStrInst(node.getlVal().getName(), value));
+        builder.createStrInst(node.getlVal().getName(), value);
     }
 
     public void visit(SysYIf node) {
@@ -260,8 +250,7 @@ public class AssemblyBuilder {
     }
 
     public void visit(SysYReturn node) {
-        RetInst inst = builder.createRetInst(visit(node.getExpression()));
-        curBBlock.setTerminator(inst);
+        builder.createRetInst(visit(node.getExpression()));
     }
 
     public Value visit(SysYExpression node) {
@@ -290,7 +279,6 @@ public class AssemblyBuilder {
             params.add(visit(exp));
         }
         FuncCallInst inst = builder.createFuncCallInst(node.getName(), params);
-        curBBlock.addInst(inst);
         return inst.getResValue();
     }
 
@@ -316,7 +304,6 @@ public class AssemblyBuilder {
             Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
             inst = builder.createBinaryInst(node.getToken(), lValue, rValue);
         }
-        curBBlock.addInst(inst);
         return inst.getResValue();
     }
 
@@ -329,14 +316,12 @@ public class AssemblyBuilder {
     }
 
     public Value visit(SysYLVal node) {
-        MemoryInst inst = null;
         switch (node.getDimensions()) {
             case 0: {
-                inst = builder.createLdInst(node.getName());
-                curBBlock.addInst(inst);
+                return builder.createLdInst(node.getName()).getTo();
             }
         }
-        return inst.getTo();
+        return null;
     }
 
     public Value visit(SysYCond node) {

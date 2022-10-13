@@ -21,6 +21,8 @@ public class GlobalVariable extends GlobalValue {
 
     @Override
     public String toString() {
-        return "@" + name + " = dso_local global " + value.getType() + " " + ((ConstantInt) value).getValue();
+        return "@" + name + " = dso_local " +
+                (isConst ? "const" : "global")
+                + " " + value.getType() + " " + ((ConstantInt) value).getValue();
     }
 }
