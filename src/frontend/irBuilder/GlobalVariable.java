@@ -17,7 +17,7 @@ public class GlobalVariable extends GlobalValue {
     @Override
     public String toString() {
         return name + " = dso_local " +
-                (isConst ? "const" : "global")
+                (isConst ? "constant" : "global")
                 + " " + type + " " + initValue;
     }
 }

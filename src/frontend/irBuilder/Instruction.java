@@ -249,27 +249,33 @@ public abstract class Instruction extends User {
     }
 
     public static class GEPInst extends Instruction {
+        private final Value from;
         private final Value to;
-        private final int first;
-        private final int second;
+        private final Value index;
 
-        public GEPInst(BasicBlock parent, Value to, int first, int second) {
+        public GEPInst(BasicBlock parent, Value from, Value to, Value index) {
             super(parent);
+            this.from = from;
             this.to = to;
-            this.first = first;
-            this.second = second;
+            this.index = index;
         }
 
-        public GEPInst(BasicBlock parent, Initial array, Value to, int first) {
-            super(parent);
-            this.to = to;
-            this.first = first;
-            this.second = -1;
+        public Value getFrom() {
+            return from;
+        }
+
+        public Value getTo() {
+            return to;
+        }
+
+        public Value getIndex() {
+            return index;
         }
 
         @Override
         public String toString() {
-            return "";
+            return to + " = getelementptr " + ((Type.PointerType) from.getType()).getInnerType() + ", "
+                    + from.getType() + " " + from + ", i32 0, " + index.getType() + " " + index;
         }
     }
 }

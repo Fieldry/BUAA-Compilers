@@ -68,10 +68,6 @@ public class AssemblyBuilder {
         return temp;
     }
 
-    private void initArray(GlobalVariable variable) {
-
-    }
-
     public void visit(SysYCompilationUnit node) {
         inGlobal = true;
         for (SysYBlockItem item : node.getDecls()) {
@@ -158,11 +154,13 @@ public class AssemblyBuilder {
                 return;
             }
         }
-        Initial initValue = visit(init, type);
         if (inGlobal) {
+            Initial initValue = visit(init, type);
             module.addGlobal(builder.createGlobalVar(node.isConst(), type, node.getName(), initValue));
         } else {
             builder.createAllocInst(type, node.getName());
+            Initial initValue = visit(init, type);
+            if (type.isInt32Type()) builder.createStrInst(node.getName(), ((ValueInitial) initValue).getValue());
         }
     }
 
@@ -194,7 +192,8 @@ public class AssemblyBuilder {
 
     public void visit(SysYAssign node) {
         Value value = visit(node.getExpression());
-        builder.createStrInst(node.getlVal().getName(), value);
+        Value left = visit(node.getlVal(), true);
+        builder.createStrInst(value, left);
     }
 
     public void visit(SysYIf node) {
@@ -280,12 +279,10 @@ public class AssemblyBuilder {
             return visit((SysYBinaryExp) node);
         } else if(node instanceof SysYIntC) {
             return visit((SysYIntC) node);
-        } else if (node instanceof SysYInit) {
-            return visit((SysYInit) node);
         } else if (node instanceof SysYCond) {
             return visit((SysYCond) node);
         } else if (node instanceof SysYLVal) {
-            return visit((SysYLVal) node);
+            return visit((SysYLVal) node, false);
         } else if (node instanceof SysYFuncCall) {
             return visit((SysYFuncCall) node);
         }
@@ -331,10 +328,10 @@ public class AssemblyBuilder {
     }
 
     public Initial visit(SysYInit node, Type type) {
-        if (node.getExpression().get(0) instanceof SysYInit) {
-            ArrayList<Value> values = new ArrayList<>();
+        if (type.isArrayType()) {
+            ArrayList<Initial> values = new ArrayList<>();
             for (SysYExpression exp : node.getExpression()) {
-                values.add(visit(exp));
+                values.add(visit((SysYInit) exp, ((ArrayType) type).getBaseType()));
             }
             return new ArrayInitial(type, values);
         } else {
@@ -342,13 +339,27 @@ public class AssemblyBuilder {
         }
     }
 
-    public Value visit(SysYLVal node) {
+    public Value visit(SysYLVal node, boolean pointer) {
         switch (node.getDimensions()) {
             case 0: {
-                return builder.createLdInst(node.getName()).getTo();
+                if (pointer) return builder.getValueFromTable(node.getName());
+                else return builder.createLdInst(node.getName()).getTo();
+            }
+            case 1: {
+                GEPInst inst = builder.createGEPInst(node.getName(), node.getDimensions(), visit(node.getFirstExp()));
+                if (pointer) return inst.getTo();
+                else return builder.createLdInst(inst.getTo()).getTo();
+            }
+            case 2: {
+                GEPInst inst = builder.createGEPInst(node.getName(), node.getDimensions(),
+                        visit(node.getFirstExp()), visit(node.getSecondExp()));
+                if (pointer) return inst.getTo();
+                else return builder.createLdInst(inst.getTo()).getTo();
+            }
+            default: {
+                return null;
             }
         }
-        return null;
     }
 
     public Value visit(SysYCond node) {

@@ -21,6 +21,12 @@ public class IRBuilder {
 
     private String getBlockName() { return "" + (++labelCount); }
 
+    public Value getValueFromTable(String name) {
+        Value from = curTable.findSymbolInAll('*' + name);
+        if (from == null) from = curTable.findSymbolInAll('@' + name);
+        return from;
+    }
+
     public void createSymbolTable() { curTable = new SymbolValueTable(curTable); }
 
     public void recallSymbolTable() { curTable = curTable.getParent(); }
@@ -69,8 +75,10 @@ public class IRBuilder {
     }
 
     public MemoryInst createStrInst(String name, Value from) {
-        Value to = curTable.findSymbolInAll('*' + name);
-        if (to == null) to = curTable.findSymbolInAll('@' + name);
+        return createStrInst(from, getValueFromTable(name));
+    }
+
+    public MemoryInst createStrInst(Value from, Value to) {
         MemoryInst inst = new MemoryInst(block, 0, from, to);
         block.addInst(inst);
         return inst;
@@ -84,8 +92,39 @@ public class IRBuilder {
             inst = new MemoryInst(null, 0, null, from);
         } else {
             Value to = new Value(IntType.INT32_TYPE, getRegName());
-            curTable.addSymbol(name, to);
             inst = new MemoryInst(block, 1, from, to);
+            block.addInst(inst);
+        }
+        return inst;
+    }
+
+    public MemoryInst createLdInst(Value from) {
+        MemoryInst inst;
+        Value to = new Value(IntType.INT32_TYPE, getRegName());
+        inst = new MemoryInst(block, 1, from, to);
+        block.addInst(inst);
+        return inst;
+    }
+
+    public GEPInst createGEPInst(String name, int dim, Value... indexes) {
+        GEPInst inst;
+        Value from = curTable.findSymbolInAll('*' + name);
+        if (from == null) from = curTable.findSymbolInAll('@' + name);
+
+        if (dim == 1) {
+            Value to = new Value(new PointerType(IntType.INT32_TYPE), getRegName());
+            inst = new GEPInst(block, from, to, indexes[0]);
+            block.addInst(inst);
+        } else {
+            ArrayType arrayType = (ArrayType)
+                    ((ArrayType) (((PointerType) from.getType()).getInnerType())).getBaseType();
+            Value to = new Value(arrayType, getRegName());
+            inst = new GEPInst(block, from, to, indexes[0]);
+            block.addInst(inst);
+
+            from = to;
+            to = new Value(new PointerType(IntType.INT32_TYPE), getRegName());
+            inst = new GEPInst(block, from, to, indexes[1]);
             block.addInst(inst);
         }
         return inst;

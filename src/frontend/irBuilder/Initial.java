@@ -11,6 +11,8 @@ public class Initial {
 
     public boolean isValueInit() { return this instanceof ValueInitial; }
 
+    public Type getType() { return type; }
+
     public static class ValueInitial extends Initial {
         private final Value value;
 
@@ -19,23 +21,27 @@ public class Initial {
             this.value = value;
         }
 
+        public Value getValue() {
+            return value;
+        }
+
         @Override
         public String toString() {
-            return type + " " + value;
+            return String.valueOf(value);
         }
     }
 
     public static class ArrayInitial extends Initial {
-        private final ArrayList<Value> initValues;
+        private final ArrayList<Initial> initValues;
 
-        public ArrayInitial(Type type, ArrayList<Value> values) {
+        public ArrayInitial(Type type, ArrayList<Initial> values) {
             super(type);
             initValues = values;
         }
 
-        public void addInitValue(Value value) { initValues.add(value); }
+        public void addInitValue(Initial value) { initValues.add(value); }
 
-        public ArrayList<Value> getInitValues () {
+        public ArrayList<Initial> getInitValues () {
             return initValues;
         }
 
