@@ -1,8 +1,11 @@
 package frontend.irBuilder;
 
-public class GlobalValue extends Constant {
+public class GlobalValue extends User {
 
     public GlobalValue() {}
 
-    public GlobalValue(Type type) { this.type = type; }
+    public GlobalValue(Type type, String name) {
+        this.type = type;
+        this.name = name;
+    }
 }

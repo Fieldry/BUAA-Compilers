@@ -25,22 +25,23 @@ public class IRBuilder {
 
     public void recallSymbolTable() { curTable = curTable.getParent(); }
 
-    public GlobalVariable createGlobalVar(boolean isConst, String name, Value value) {
-        curTable.addSymbol('@' + name, isConst ? value : new Value(PointerType.i32, "@" + name));
-        return new GlobalVariable(isConst, name, value);
+    public GlobalVariable createGlobalVar(boolean isConst, Type type, String name, Initial initial) {
+        name = "@" + name;
+        curTable.addSymbol(name, new Value(new PointerType(type), name));
+        return new GlobalVariable(isConst, type, name, initial);
     }
 
     public Function createFunction(boolean returnInt, String name, Module parent) {
-        name = '@' + name;
+        name = "@" + name;
         labelCount = -1;
-        Type type = returnInt ? IntType.i32 : VoidType.vd;
+        Type type = returnInt ? IntType.INT32_TYPE : VoidType.VOID_TYPE;
         Function function = new Function(type, name, parent);
         curTable.addSymbol(name, function);
         return function;
     }
 
     public Value createFParam(String name, int dimension) {
-        Value value = new Value(IntType.i32, getRegName());
+        Value value = new Value(IntType.INT32_TYPE, getRegName());
         curTable.addSymbol(name, value);
         return value;
     }
@@ -56,10 +57,13 @@ public class IRBuilder {
 
     public BranchInst createBranchInst(BasicBlock target) { return new BranchInst(block, target); }
 
-    public AllocInst createAllocInst(String name) {
+    public AllocInst createAllocInst(Type type, String name) {
         String regName = getRegName();
-        curTable.addSymbol('*' + name, new Value(PointerType.i32, regName));
-        AllocInst inst = new AllocInst(block, new Value(IntType.i32, regName));
+        AllocInst inst;
+
+        curTable.addSymbol('*' + name, new Value(new PointerType(type), regName));
+
+        inst = new AllocInst(block, new Value(type, regName));
         block.addInst(inst);
         return inst;
     }
@@ -79,7 +83,7 @@ public class IRBuilder {
         if (from instanceof ConstantInt) {
             inst = new MemoryInst(null, 0, null, from);
         } else {
-            Value to = new Value(IntType.i32, getRegName());
+            Value to = new Value(IntType.INT32_TYPE, getRegName());
             curTable.addSymbol(name, to);
             inst = new MemoryInst(block, 1, from, to);
             block.addInst(inst);
@@ -88,7 +92,8 @@ public class IRBuilder {
     }
 
     public RetInst createRetInst(Value value) {
-        RetInst inst = value == null ? new RetInst(VoidType.vd, null) : new RetInst(IntType.i32, value);
+        RetInst inst = value == null ?
+                new RetInst(VoidType.VOID_TYPE, null) : new RetInst(IntType.INT32_TYPE, value);
         block.setTerminator(inst);
         return inst;
     }
@@ -97,8 +102,8 @@ public class IRBuilder {
         Function function = (Function) curTable.findSymbolInAll('@' + name);
 
         User user;
-        if (function.getType().equals(IntType.i32)) {
-            user = new User(IntType.i32, getRegName());
+        if (function.getType().equals(IntType.INT32_TYPE)) {
+            user = new User(IntType.INT32_TYPE, getRegName());
             user.addOperand(function);
             function.addUse(user);
         } else user = null;
@@ -114,57 +119,57 @@ public class IRBuilder {
         BinaryInst res;
         switch (token.getTokenKind()) {
             case PLUS: {
-                user = new User(IntType.i32, regName, lValue, rValue);
+                user = new User(IntType.INT32_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.ADD, lValue, rValue, user);
                 break;
             }
             case MINUS: {
-                user = new User(IntType.i32, regName, lValue, rValue);
+                user = new User(IntType.INT32_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.SUB, lValue, rValue, user);
                 break;
             }
             case STAR: {
-                user = new User(IntType.i32, regName, lValue, rValue);
+                user = new User(IntType.INT32_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.MUL, lValue, rValue, user);
                 break;
             }
             case DIV: {
-                user = new User(IntType.i32, regName, lValue, rValue);
+                user = new User(IntType.INT32_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.SDIV, lValue, rValue, user);
                 break;
             }
             case MOD: {
-                user = new User(IntType.i32, regName, lValue, rValue);
+                user = new User(IntType.INT32_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.REM, lValue, rValue, user);
                 break;
             }
             case GEQ: {
-                user = new User(IntType.i1, regName, lValue, rValue);
+                user = new User(IntType.INT1_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.SGE, lValue, rValue, user);
                 break;
             }
             case GRE: {
-                user = new User(IntType.i1, regName, lValue, rValue);
+                user = new User(IntType.INT1_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.SGT, lValue, rValue, user);
                 break;
             }
             case LEQ: {
-                user = new User(IntType.i1, regName, lValue, rValue);
+                user = new User(IntType.INT1_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.SLE, lValue, rValue, user);
                 break;
             }
             case LSS: {
-                user = new User(IntType.i1, regName, lValue, rValue);
+                user = new User(IntType.INT1_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.SLT, lValue, rValue, user);
                 break;
             }
             case EQL: {
-                user = new User(IntType.i1, regName, lValue, rValue);
+                user = new User(IntType.INT1_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.EQ, lValue, rValue, user);
                 break;
             }
             case NEQ: {
-                user = new User(IntType.i1, regName, lValue, rValue);
+                user = new User(IntType.INT1_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.NE, lValue, rValue, user);
                 break;
             }
@@ -181,7 +186,7 @@ public class IRBuilder {
 
     public BinaryInst createSub(Value lValue, Value rValue) {
         String regName = getRegName();
-        User user = new User(IntType.i32, regName, lValue, rValue);
+        User user = new User(IntType.INT32_TYPE, regName, lValue, rValue);
         lValue.addUse(user);
         rValue.addUse(user);
         return new BinaryInst(block, BinaryOp.SUB, lValue, rValue, user);

@@ -4,6 +4,8 @@ import frontend.tree.SysYTree;
 import frontend.tree.SysYTree.*;
 import frontend.irBuilder.Instruction.*;
 import frontend.irBuilder.LoopRecord.Pair;
+import frontend.irBuilder.Type.*;
+import frontend.irBuilder.Initial.*;
 import io.Writer;
 
 import java.util.ArrayList;
@@ -66,6 +68,10 @@ public class AssemblyBuilder {
         return temp;
     }
 
+    private void initArray(GlobalVariable variable) {
+
+    }
+
     public void visit(SysYCompilationUnit node) {
         inGlobal = true;
         for (SysYBlockItem item : node.getDecls()) {
@@ -89,13 +95,15 @@ public class AssemblyBuilder {
         }
         curBBlock = builder.createBlock(curFunction);
         curFunction.addBBlock(curBBlock);
-        for (SysYTree.SysYSymbol symbol : node.getFuncParams()) {
-            curBBlock.addInst(builder.createAllocInst(symbol.getName()));
+        for (int i = 0, len = node.getFuncParams().size(); i < len; i++) {
+            SysYSymbol symbol = node.getFuncParams().get(i);
+            Value value = curFunction.getParams().get(i);
+            curBBlock.addInst(builder.createAllocInst(value.getType(), symbol.getName()));
         }
         for (int i = 0, len = node.getFuncParams().size(); i < len; i++) {
             SysYSymbol symbol = node.getFuncParams().get(i);
             Value value = curFunction.getParams().get(i);
-            curBBlock.addInst(builder.createStrInst(symbol.getName(), value));
+            builder.createStrInst(symbol.getName(), value);
         }
         visit((SysYBlock) node.getBlock());
         builder.recallSymbolTable();
@@ -127,23 +135,34 @@ public class AssemblyBuilder {
     }
 
     public void visit(SysYDef node) {
+        SysYInit init = (SysYInit) node.getInit();
+        Type type;
+        switch (node.getDimensions()) {
+            case 0: {
+                type = IntType.INT32_TYPE;
+                break;
+            }
+            case 1: {
+                int size = ((ConstantInt) visit(node.getFirstExp())).getValue();
+                type = new ArrayType(size, IntType.INT32_TYPE);
+                break;
+            }
+            case 2: {
+                int firstSize = ((ConstantInt) visit(node.getFirstExp())).getValue();
+                int secondSize = ((ConstantInt) visit(node.getSecondExp())).getValue();
+                ArrayType secondArrayType = new ArrayType(secondSize, IntType.INT32_TYPE);
+                type = new ArrayType(firstSize, secondArrayType);
+                break;
+            }
+            default: {
+                return;
+            }
+        }
+        Initial initValue = visit(init, type);
         if (inGlobal) {
-            switch (node.getDimensions()) {
-                case 0: {
-                    Value value = visit(node.getInit());
-                    module.addGlobal(builder.createGlobalVar(node.isConst(), node.getName(), value));
-                    break;
-                }
-            }
+            module.addGlobal(builder.createGlobalVar(node.isConst(), type, node.getName(), initValue));
         } else {
-            switch (node.getDimensions()) {
-                case 0: {
-                    builder.createAllocInst(node.getName());
-                    Value value = visit(node.getInit());
-                    builder.createStrInst(node.getName(), value);
-                    break;
-                }
-            }
+            builder.createAllocInst(type, node.getName());
         }
     }
 
@@ -311,8 +330,16 @@ public class AssemblyBuilder {
         return builder.createConst(node.getValue());
     }
 
-    public Value visit(SysYInit node) {
-        return visit(node.getExpression().get(0));
+    public Initial visit(SysYInit node, Type type) {
+        if (node.getExpression().get(0) instanceof SysYInit) {
+            ArrayList<Value> values = new ArrayList<>();
+            for (SysYExpression exp : node.getExpression()) {
+                values.add(visit(exp));
+            }
+            return new ArrayInitial(type, values);
+        } else {
+            return new ValueInitial(type, visit(node.getExpression().get(0)));
+        }
     }
 
     public Value visit(SysYLVal node) {

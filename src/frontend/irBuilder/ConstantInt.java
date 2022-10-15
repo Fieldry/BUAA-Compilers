@@ -1,6 +1,6 @@
 package frontend.irBuilder;
 
-public class ConstantInt extends Constant {
+public class ConstantInt extends User {
     private final int value;
     private static final ConstantInt zero = new ConstantInt(0);
 
@@ -12,7 +12,7 @@ public class ConstantInt extends Constant {
 
     @Override
     public Type getType() {
-        return Type.IntType.i32;
+        return Type.IntType.INT32_TYPE;
     }
 
     @Override

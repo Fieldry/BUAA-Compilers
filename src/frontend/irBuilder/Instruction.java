@@ -247,4 +247,29 @@ public abstract class Instruction extends User {
             return res + ")";
         }
     }
+
+    public static class GEPInst extends Instruction {
+        private final Value to;
+        private final int first;
+        private final int second;
+
+        public GEPInst(BasicBlock parent, Value to, int first, int second) {
+            super(parent);
+            this.to = to;
+            this.first = first;
+            this.second = second;
+        }
+
+        public GEPInst(BasicBlock parent, Initial array, Value to, int first) {
+            super(parent);
+            this.to = to;
+            this.first = first;
+            this.second = -1;
+        }
+
+        @Override
+        public String toString() {
+            return "";
+        }
+    }
 }

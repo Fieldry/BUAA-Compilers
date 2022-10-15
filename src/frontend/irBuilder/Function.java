@@ -7,12 +7,10 @@ import java.util.ArrayList;
 public class Function extends GlobalValue {
     private final IList<BasicBlock> basicBlockList = new IList<>();
     private final ArrayList<Value> params = new ArrayList<>();
-    private final String name;
     private final Module parent;
 
     public Function(Type type, String name, Module parent) {
-        super(type);
-        this.name = name;
+        super(type, name);
         this.parent = parent;
     }
 
