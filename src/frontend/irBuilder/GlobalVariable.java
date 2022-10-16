@@ -18,6 +18,6 @@ public class GlobalVariable extends GlobalValue {
     public String toString() {
         return name + " = dso_local " +
                 (isConst ? "constant" : "global")
-                + " " + type + " " + initValue;
+                + " " + type + " " + (initValue == null ? "" : initValue);
     }
 }

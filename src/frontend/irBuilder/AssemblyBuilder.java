@@ -1,11 +1,13 @@
 package frontend.irBuilder;
 
+import frontend.token.Tokens;
 import frontend.tree.SysYTree;
 import frontend.tree.SysYTree.*;
 import frontend.irBuilder.Instruction.*;
 import frontend.irBuilder.LoopRecord.Pair;
 import frontend.irBuilder.Type.*;
 import frontend.irBuilder.Initial.*;
+import frontend.irBuilder.IRBuilder.IdentKind;
 import io.Writer;
 
 import java.util.ArrayList;
@@ -21,9 +23,6 @@ public class AssemblyBuilder {
     /** Current function.
      */
     private Function curFunction;
-    /** The count of basic block in current function.
-     */
-    private int bbCount;
     /** Current basic block.
      */
     private BasicBlock curBBlock;
@@ -68,15 +67,60 @@ public class AssemblyBuilder {
         return temp;
     }
 
+    private ConstantInt evaluate(Tokens.Token token, Value l, Value r) {
+        int lValue = ((ConstantInt) l).getValue();
+        int rValue = ((ConstantInt) r).getValue();
+        int res = 0;
+        switch (token.getTokenKind()) {
+            case PLUS: {
+                res = lValue + rValue;
+                break;
+            }
+            case MINUS: {
+                res = lValue - rValue;
+                break;
+            }
+            case STAR: {
+                res = lValue * rValue;
+                break;
+            }
+            case DIV: {
+                res = lValue / rValue;
+                break;
+            }
+            case MOD: {
+                res = lValue % rValue;
+                break;
+            }
+        }
+        return new ConstantInt(res);
+    }
+
+    private ConstantInt evaluate(Tokens.Token token, Value v) {
+        int value = ((ConstantInt) v).getValue();
+        int res = 0;
+        switch (token.getTokenKind()) {
+            case PLUS: {
+                res = value;
+                break;
+            }
+            case MINUS: {
+                res = -value;
+                break;
+            }
+        }
+        return new ConstantInt(res);
+    }
+
     public void visit(SysYCompilationUnit node) {
         inGlobal = true;
         for (SysYBlockItem item : node.getDecls()) {
             visit((SysYDecl) item);
         }
+        inGlobal = false;
         for (SysYSymbol symbol : node.getFuncDefs()) {
             visit((SysYFuncDef) symbol);
         }
-        inGlobal = false;
         visit((SysYMainFuncDef) node.getMainFuncDef());
     }
 
@@ -86,7 +130,8 @@ public class AssemblyBuilder {
 
         builder.createSymbolTable();
         for (SysYTree.SysYSymbol symbol : node.getFuncParams()) {
-            Value value = builder.createFParam(symbol.getName(), ((SysYFuncParam) symbol).getDimensions());
+            Value value = builder.createFParam(symbol.getName(),
+                    ((SysYFuncParam) symbol).getDimensions(), visit(((SysYFuncParam) symbol).getSecondExp()));
             curFunction.addParam(value);
         }
         curBBlock = builder.createBlock(curFunction);
@@ -94,7 +139,7 @@ public class AssemblyBuilder {
         for (int i = 0, len = node.getFuncParams().size(); i < len; i++) {
             SysYSymbol symbol = node.getFuncParams().get(i);
             Value value = curFunction.getParams().get(i);
-            curBBlock.addInst(builder.createAllocInst(value.getType(), symbol.getName()));
+            builder.createAllocInst(value.getType(), "$", symbol.getName());
         }
         for (int i = 0, len = node.getFuncParams().size(); i < len; i++) {
             SysYSymbol symbol = node.getFuncParams().get(i);
@@ -102,6 +147,7 @@ public class AssemblyBuilder {
             builder.createStrInst(symbol.getName(), value);
         }
         visit((SysYBlock) node.getBlock());
+        if (curBBlock.getTerminator() == null) builder.createRetInst(null);
         builder.recallSymbolTable();
     }
 
@@ -113,6 +159,7 @@ public class AssemblyBuilder {
 
         builder.createSymbolTable();
         visit((SysYBlock) node.getBlock());
+        if (curBBlock.getTerminator() == null) builder.createRetInst(null);
         builder.recallSymbolTable();
     }
 
@@ -155,12 +202,15 @@ public class AssemblyBuilder {
             }
         }
         if (inGlobal) {
-            Initial initValue = visit(init, type);
+            Initial initValue = init == null ? null : visit(init, type);
             module.addGlobal(builder.createGlobalVar(node.isConst(), type, node.getName(), initValue));
         } else {
-            builder.createAllocInst(type, node.getName());
-            Initial initValue = visit(init, type);
-            if (type.isInt32Type()) builder.createStrInst(node.getName(), ((ValueInitial) initValue).getValue());
+            builder.createAllocInst(type, "*", node.getName());
+            Initial initValue = init == null ? null : visit(init, type);
+            if (type.isInt32Type()) {
+                Value value = initValue == null ? null : ((ValueInitial) initValue).getValue();
+                builder.createStrInst(node.getName(), value);
+            }
         }
     }
 
@@ -299,17 +349,16 @@ public class AssemblyBuilder {
     }
 
     public Value visit(SysYUnaryExp node) {
-        BinaryInst inst = null;
-        switch (node.getUnaryOp().getTokenKind()) {
-            case PLUS: {
-                return visit(node.getUnaryExp());
-            }
-            case MINUS: {
-                inst = builder.createSub(ConstantInt.getZero(), visit(node.getUnaryExp()));
-            }
+        Value value = visit(node.getUnaryExp());
+        if (value instanceof ConstantInt) {
+            return evaluate(node.getUnaryOp(), value);
+        } else if (node.getUnaryOp().getTokenKind() == Tokens.TokenKind.MINUS){
+            BinaryInst inst = builder.createBinaryInst(node.getUnaryOp(), ConstantInt.getZero(), value);
+            curBBlock.addInst(inst);
+            return inst.getResValue();
+        } else {
+            return value;
         }
-        curBBlock.addInst(inst);
-        return inst.getResValue();
     }
 
     public Value visit(SysYBinaryExp node) {
@@ -318,9 +367,13 @@ public class AssemblyBuilder {
             return visit(node.getLeftExp());
         } else {
             Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
-            inst = builder.createBinaryInst(node.getToken(), lValue, rValue);
+            if (lValue instanceof ConstantInt && rValue instanceof ConstantInt)
+                return evaluate(node.getToken(), lValue, rValue);
+            else {
+                inst = builder.createBinaryInst(node.getToken(), lValue, rValue);
+                return inst.getResValue();
+            }
         }
-        return inst.getResValue();
     }
 
     public Value visit(SysYIntC node) {
@@ -339,27 +392,67 @@ public class AssemblyBuilder {
         }
     }
 
-    public Value visit(SysYLVal node, boolean pointer) {
-        switch (node.getDimensions()) {
-            case 0: {
-                if (pointer) return builder.getValueFromTable(node.getName());
-                else return builder.createLdInst(node.getName()).getTo();
-            }
-            case 1: {
-                GEPInst inst = builder.createGEPInst(node.getName(), node.getDimensions(), visit(node.getFirstExp()));
-                if (pointer) return inst.getTo();
-                else return builder.createLdInst(inst.getTo()).getTo();
-            }
-            case 2: {
-                GEPInst inst = builder.createGEPInst(node.getName(), node.getDimensions(),
-                        visit(node.getFirstExp()), visit(node.getSecondExp()));
-                if (pointer) return inst.getTo();
-                else return builder.createLdInst(inst.getTo()).getTo();
-            }
-            default: {
-                return null;
+    public Value visit(SysYLVal node, boolean needPointer) {
+        IdentKind identKind = builder.getKindOfValue(node.getName());
+        int dim = node.getDimensions();
+        Value pointer = builder.getValueFromTable(node.getName());
+        Type innerType = ((PointerType) pointer.getType()).getInnerType();
+        ArrayList<Value> indexes = new ArrayList<>();
+        if (node.getFirstExp() != null) {
+            indexes.add(visit(node.getFirstExp()));
+            if (node.getSecondExp() != null) indexes.add(visit(node.getSecondExp()));
+        }
+
+        for (Value value : indexes) {
+            if (innerType instanceof PointerType) {
+                pointer = builder.createGEPInst(builder.createLdInst(pointer).getTo(), innerType, value, false).getTo();
+                innerType = ((PointerType) innerType).getInnerType();
+            } else if (innerType instanceof ArrayType) {
+                pointer = builder.createGEPInst(pointer, new PointerType(((ArrayType) innerType).getBaseType()),
+                        value, true).getTo();
+                innerType = ((ArrayType) innerType).getBaseType();
             }
         }
+        if (needPointer) return pointer;
+        else {
+            if (innerType instanceof ArrayType) {
+                Value value = builder.createGEPInst(pointer, new PointerType(((ArrayType) innerType).getBaseType()),
+                        new ConstantInt(0), true).getTo();
+                return new Value(new PointerType(((ArrayType) innerType).getBaseType()), value.getName());
+            }
+            else return builder.createLdInst(pointer).getTo();
+        }
+
+
+//        switch (dim) {
+//            case 0: {
+//                if (pointer || inGlobal) return builder.getValueFromTable(node.getName());
+//                else return builder.createLdInst(node.getName()).getTo();
+//            }
+//            case 1: {
+//                GEPInst inst;
+//                if (identKind == IdentKind.FUNC_PARAM)
+//                    inst = builder.createGEPInst(builder.createLdInst(node.getName()).getTo(),
+//                            dim, visit(node.getFirstExp()));
+//                else
+//                    inst = builder.createGEPInst(node.getName(), dim, visit(node.getFirstExp()));
+//                if (pointer) return inst.getTo();
+//                else return builder.createLdInst(inst.getTo()).getTo();
+//            }
+//            case 2: {
+//                GEPInst inst;
+//                if (identKind == IdentKind.FUNC_PARAM)
+//                    inst = builder.createGEPInst(builder.createLdInst(node.getName()).getTo(),
+//                            dim, visit(node.getFirstExp()), visit(node.getSecondExp()));
+//                else inst = builder.createGEPInst(node.getName(), dim,
+//                        visit(node.getFirstExp()), visit(node.getSecondExp()));
+//                if (pointer) return inst.getTo();
+//                else return builder.createLdInst(inst.getTo()).getTo();
+//            }
+//            default: {
+//                return null;
+//            }
+//        }
     }
 
     public Value visit(SysYCond node) {

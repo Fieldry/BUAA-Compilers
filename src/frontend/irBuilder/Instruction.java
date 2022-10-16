@@ -252,12 +252,14 @@ public abstract class Instruction extends User {
         private final Value from;
         private final Value to;
         private final Value index;
+        private final boolean flag;
 
-        public GEPInst(BasicBlock parent, Value from, Value to, Value index) {
+        public GEPInst(BasicBlock parent, Value from, Value to, Value index, boolean flag) {
             super(parent);
             this.from = from;
             this.to = to;
             this.index = index;
+            this.flag = flag;
         }
 
         public Value getFrom() {
@@ -275,7 +277,7 @@ public abstract class Instruction extends User {
         @Override
         public String toString() {
             return to + " = getelementptr " + ((Type.PointerType) from.getType()).getInnerType() + ", "
-                    + from.getType() + " " + from + ", i32 0, " + index.getType() + " " + index;
+                    + from.getType() + " " + from + (flag ? ", i32 0, " : ", ") + index.getType() + " " + index;
         }
     }
 }

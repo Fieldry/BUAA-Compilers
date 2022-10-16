@@ -3,6 +3,7 @@ package frontend.irBuilder;
 import frontend.irBuilder.Instruction.*;
 import frontend.irBuilder.Type.*;
 import frontend.irBuilder.Instruction.BinaryInst.BinaryOp;
+import frontend.irBuilder.Initial.*;
 import frontend.token.Tokens.Token;
 import frontend.symbolTable.SymbolValueTable;
 
@@ -21,9 +22,31 @@ public class IRBuilder {
 
     private String getBlockName() { return "" + (++labelCount); }
 
+    public enum IdentKind {
+        GLOBAL("@"),
+        LOCAL("*"),
+        FUNC_PARAM("$");
+        private String prefix;
+
+        IdentKind(String prefix) { this.prefix = prefix; }
+
+        @Override
+        public String toString() {
+            return prefix;
+        }
+    }
+
+    public IdentKind getKindOfValue(String name) {
+        if (curTable.findSymbolInAll("*" + name) != null) return IdentKind.LOCAL;
+        else if (curTable.findSymbolInAll("$" + name) != null) return IdentKind.FUNC_PARAM;
+        else if (curTable.findSymbolInAll("@" + name) != null) return IdentKind.GLOBAL;
+        else return null;
+    }
+
     public Value getValueFromTable(String name) {
-        Value from = curTable.findSymbolInAll('*' + name);
-        if (from == null) from = curTable.findSymbolInAll('@' + name);
+        Value from = curTable.findSymbolInAll("*" + name);
+        if (from == null) from = curTable.findSymbolInAll("$" + name);
+        if (from == null) from = curTable.findSymbolInAll("@" + name);
         return from;
     }
 
@@ -33,7 +56,9 @@ public class IRBuilder {
 
     public GlobalVariable createGlobalVar(boolean isConst, Type type, String name, Initial initial) {
         name = "@" + name;
-        curTable.addSymbol(name, new Value(new PointerType(type), name));
+        Value value = isConst && type.isInt32Type() ? ((ValueInitial) initial).getValue()
+                : new Value(new PointerType(type), name);
+        curTable.addSymbol(name, value);
         return new GlobalVariable(isConst, type, name, initial);
     }
 
@@ -46,8 +71,16 @@ public class IRBuilder {
         return function;
     }
 
-    public Value createFParam(String name, int dimension) {
-        Value value = new Value(IntType.INT32_TYPE, getRegName());
+    public Value createFParam(String name, int dimension, Value second) {
+        Value value;
+        if (dimension == 0) {
+            value = new Value(IntType.INT32_TYPE, getRegName());
+        } else if (dimension == 1) {
+            value = new Value(new PointerType(IntType.INT32_TYPE), getRegName());
+        } else {
+            int size = ((ConstantInt) second).getValue();
+            value = new Value(new PointerType(new ArrayType(size, IntType.INT32_TYPE)), getRegName());
+        }
         curTable.addSymbol(name, value);
         return value;
     }
@@ -63,11 +96,11 @@ public class IRBuilder {
 
     public BranchInst createBranchInst(BasicBlock target) { return new BranchInst(block, target); }
 
-    public AllocInst createAllocInst(Type type, String name) {
+    public AllocInst createAllocInst(Type type, String prefix, String name) {
         String regName = getRegName();
         AllocInst inst;
 
-        curTable.addSymbol('*' + name, new Value(new PointerType(type), regName));
+        curTable.addSymbol(prefix + name, new Value(new PointerType(type), regName));
 
         inst = new AllocInst(block, new Value(type, regName));
         block.addInst(inst);
@@ -85,46 +118,54 @@ public class IRBuilder {
     }
 
     public MemoryInst createLdInst(String name) {
-        MemoryInst inst;
-        Value from = curTable.findSymbolInAll('*' + name);
-        if (from == null) from = curTable.findSymbolInAll('@' + name);
-        if (from instanceof ConstantInt) {
-            inst = new MemoryInst(null, 0, null, from);
-        } else {
-            Value to = new Value(IntType.INT32_TYPE, getRegName());
-            inst = new MemoryInst(block, 1, from, to);
-            block.addInst(inst);
-        }
-        return inst;
+        return createLdInst(getValueFromTable(name));
     }
 
     public MemoryInst createLdInst(Value from) {
-        MemoryInst inst;
-        Value to = new Value(IntType.INT32_TYPE, getRegName());
-        inst = new MemoryInst(block, 1, from, to);
+        Type type = ((PointerType) from.getType()).getInnerType();
+        Value to = new Value(type, getRegName());
+        MemoryInst inst = new MemoryInst(block, 1, from, to);
         block.addInst(inst);
         return inst;
     }
 
     public GEPInst createGEPInst(String name, int dim, Value... indexes) {
         GEPInst inst;
-        Value from = curTable.findSymbolInAll('*' + name);
-        if (from == null) from = curTable.findSymbolInAll('@' + name);
+        Value from = getValueFromTable(name);
 
-        if (dim == 1) {
-            Value to = new Value(new PointerType(IntType.INT32_TYPE), getRegName());
-            inst = new GEPInst(block, from, to, indexes[0]);
-            block.addInst(inst);
-        } else {
-            ArrayType arrayType = (ArrayType)
-                    ((ArrayType) (((PointerType) from.getType()).getInnerType())).getBaseType();
-            Value to = new Value(arrayType, getRegName());
-            inst = new GEPInst(block, from, to, indexes[0]);
-            block.addInst(inst);
+        Type type = ((ArrayType) (((PointerType) from.getType()).getInnerType())).getBaseType();
+        Value to = new Value(new PointerType(type), getRegName());
+        inst = new GEPInst(block, from, to, indexes[0], true);
+        block.addInst(inst);
 
+        if (dim == 2) {
             from = to;
             to = new Value(new PointerType(IntType.INT32_TYPE), getRegName());
-            inst = new GEPInst(block, from, to, indexes[1]);
+            inst = new GEPInst(block, from, to, indexes[1], true);
+            block.addInst(inst);
+        }
+        return inst;
+    }
+
+    public GEPInst createGEPInst(Value from, Type type, Value index, boolean flag) {
+        Value to = new Value(type, getRegName());
+        GEPInst inst = new GEPInst(block, from, to, index, flag);
+        block.addInst(inst);
+
+        return inst;
+    }
+
+    public GEPInst createGEPInst(Value from, int dim, Value... indexes) {
+        GEPInst inst;
+        Type type = ((PointerType) from.getType()).getInnerType();
+        Value to = new Value(new PointerType(type), getRegName());
+        inst = new GEPInst(block, from, to, indexes[0], false);
+        block.addInst(inst);
+
+        if (dim == 2) {
+            from = to;
+            to = new Value(new PointerType(IntType.INT32_TYPE), getRegName());
+            inst = new GEPInst(block, from, to, indexes[1], true);
             block.addInst(inst);
         }
         return inst;
