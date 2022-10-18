@@ -7,7 +7,9 @@ import java.util.ArrayList;
 public class Function extends GlobalValue {
     private final IList<BasicBlock> basicBlockList = new IList<>();
     private final ArrayList<Value> params = new ArrayList<>();
-    private final Module parent;
+    private Module parent;
+
+    public Function() {}
 
     public Function(Type type, String name, Module parent) {
         super(type, name);
@@ -28,15 +30,8 @@ public class Function extends GlobalValue {
 
     @Override
     public String toString() {
-        String res = "define dso_local " + type + " " + name + "(";
-        if (!params.isEmpty()) {
-            Value value = params.get(0);
-            res = res + value.getType() + " " + value;
-            if (params.size() > 1) for (int i = 1, len = params.size(); i < len; i++) {
-                value = params.get(i);
-                res = res + ", " + value.getType() + " " + value;
-            }
-        }
-        return  res + ") ";
+        return  "define dso_local " + type + " " + name + "(" +
+                params.stream().map(value -> value.getType() + " " + value)
+                        .reduce((x, y) -> x + ", " + y).orElse("") + ")";
     }
 }

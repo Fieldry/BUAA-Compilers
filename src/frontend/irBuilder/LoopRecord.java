@@ -3,7 +3,15 @@ package frontend.irBuilder;
 import java.util.ArrayList;
 
 public class LoopRecord {
-    public record Pair(String string, BasicBlock block) {
+    public static class Pair {
+        private final String string;
+        private final BasicBlock block;
+
+        public Pair(String s, BasicBlock b) {
+            string = s;
+            block = b;
+        }
+
         public String getString() {
             return string;
         }

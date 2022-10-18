@@ -34,13 +34,17 @@ public class AssemblyBuilder {
     }
 
     public void generateLLVM(SysYCompilationUnit node) {
+        writer.setLlvmBw();
+        declareLibFunc();
         visit(node);
-        for (GlobalVariable var : module.getGlobalList()) {
-            writer.writeln(var.toString());
+        if (!module.getGlobalList().isEmpty()) {
+            for (GlobalVariable var : module.getGlobalList()) {
+                writer.writeln(var.toString());
+            }
+            writer.writeln("");
         }
-        writer.writeln("");
         for (Function function : module.getFunctionList()) {
-            writer.writeln(function + "{");
+            writer.writeln(function + " {");
             for (BasicBlock bBlock : function.getBBlockList()) {
                 writer.writeln(bBlock.getName() + ":");
                 for (Instruction inst : bBlock.getInstList()) {
@@ -56,6 +60,16 @@ public class AssemblyBuilder {
     /*------------------------------
         Helper functions
      -----------------------------*/
+
+    private void declareLibFunc() {
+        writer.writeln(LibFunction.GET_INT);
+        writer.writeln(LibFunction.PUT_CH);
+        writer.writeln(LibFunction.PUT_INT);
+        builder.addFunctionToTable(LibFunction.GET_INT);
+        builder.addFunctionToTable(LibFunction.PUT_CH);
+        builder.addFunctionToTable(LibFunction.PUT_INT);
+        writer.writeln("");
+    }
 
     private BasicBlock createNewBlock(boolean set) {
         BasicBlock temp = curBBlock;

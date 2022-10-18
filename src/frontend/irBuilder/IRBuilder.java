@@ -62,6 +62,10 @@ public class IRBuilder {
         return new GlobalVariable(isConst, type, name, initial);
     }
 
+    public void addFunctionToTable(LibFunction function) {
+        curTable.addSymbol(function.getName(), function);
+    }
+
     public Function createFunction(boolean returnInt, String name, Module parent) {
         name = "@" + name;
         labelCount = -1;

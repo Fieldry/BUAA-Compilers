@@ -232,19 +232,9 @@ public abstract class Instruction extends User {
 
         @Override
         public String toString() {
-            String res = (resValue == null ? "" : resValue + " = ")
-                    + "call " + function.getType() + " " + function.getName() + "(";
-
-            if (!params.isEmpty()) {
-                Value value = params.get(0);
-                res = res + value.getType() + " " + value;
-                if (params.size() > 1) for (int i = 1, len = params.size(); i < len; i++) {
-                    value = params.get(i);
-                    res = res + ", " + value.getType() + " " + value;
-                }
-            }
-
-            return res + ")";
+            return (resValue == null ? "" : resValue + " = ") + "call " + function.getType() + " " + function.getName()
+                    + "(" + params.stream().map(value -> value.getType() + " " + value)
+                    .reduce((x, y) -> x + ", " + y).orElse("") + ")";
         }
     }
 

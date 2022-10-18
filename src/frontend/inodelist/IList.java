@@ -59,7 +59,7 @@ public class IList<T extends INode> implements Iterable<T> {
 
     @Override
     public Iterator<T> iterator() {
-        return new Iterator<>() {
+        return new Iterator<T>() {
             private T cursor = getBegin();
 
             @Override

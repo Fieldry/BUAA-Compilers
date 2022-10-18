@@ -27,11 +27,12 @@ public class Compiler {
     public static Module module = new Module();
 
     public static void main(String[] args) {
-        String input = "testfile.txt", output = "output.txt", error = "error.txt";
+        String input = "testfile.txt", output = "output.txt", error = "error.txt",
+            llvm = "llvm_ir.txt", mips = "mips.txt";
         SysYCompilationUnit compUnit = null;
 
         reader = new Reader(input);
-        writer = new Writer(output, error);
+        writer = new Writer(output, error, llvm, mips);
         builder = new AssemblyBuilder(writer, module);
 
         tokenizer = new Tokenizer(tokens, reader, scanner);

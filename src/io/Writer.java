@@ -9,23 +9,32 @@ import java.io.IOException;
 import java.util.List;
 
 public class Writer {
-
     /** The file to output.
      */
-    private final String filename;
     private BufferedWriter bw;
+
+    /** The file to output token and syntax.
+     */
+    private BufferedWriter outBw;
 
     /** The file to output error.
      */
-    private final String errFilename;
     private BufferedWriter errBw;
 
-    public Writer(String filename, String errFilename) {
-        this.filename = filename;
-        this.errFilename = errFilename;
+    /** The file to output llvm ir.
+     */
+    private BufferedWriter llvmBw;
+
+    /** The file to output mips.
+     */
+    private BufferedWriter mipsBw;
+
+    public Writer(String output, String err, String llvm, String mips) {
         try {
-            this.bw = new BufferedWriter(new FileWriter(filename));
-            this.errBw = new BufferedWriter(new FileWriter(errFilename));
+            this.bw = this.outBw = new BufferedWriter(new FileWriter(output));
+            this.errBw = new BufferedWriter(new FileWriter(err));
+            this.llvmBw = new BufferedWriter(new FileWriter(llvm));
+            this.mipsBw = new BufferedWriter(new FileWriter(mips));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -33,7 +42,7 @@ public class Writer {
 
     public void writeToken(Token token) {
         try {
-            bw.write(token.getTokenKind().getCode() + " "
+            outBw.write(token.getTokenKind().getCode() + " "
                     + (token.getValue() != null ? token.getValue() : token.getTokenKind().getName()) + "\n");
         } catch (IOException e) {
             e.printStackTrace();
@@ -41,31 +50,8 @@ public class Writer {
     }
 
     public void writeTokens(List<Token> tokens) {
-        try {
-            for (Token token : tokens) {
-                writeToken(token);
-            }
-            bw.flush();
-            bw.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void write(String string) {
-        try {
-            bw.write(string);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void writeln(String string) {
-        try {
-            bw.write(string + "\n");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        for (Token token : tokens)
+            writeToken(token);
     }
 
     public void writeError(SysYException exception) {
@@ -82,12 +68,44 @@ public class Writer {
         }
     }
 
+    public void setLlvmBw() { bw = llvmBw; }
+
+    public void setMipsBw() { bw = mipsBw; }
+
+    public void write(String string) {
+        try {
+            bw.write(string);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void writeln(Object o) {
+        try {
+            bw.write(o.toString() + "\n");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void writeln(String string) {
+        try {
+            bw.write(string + "\n");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void close() {
         try {
-            bw.flush();
-            bw.close();
+            outBw.flush();
+            outBw.close();
             errBw.flush();
             errBw.close();
+            llvmBw.flush();
+            llvmBw.close();
+            mipsBw.flush();
+            mipsBw.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
