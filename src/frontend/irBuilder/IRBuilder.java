@@ -151,8 +151,8 @@ public class IRBuilder {
         return inst;
     }
 
-    public GEPInst createGEPInst(Value from, Type type, Value index, boolean flag) {
-        Value to = new Value(type, getRegName());
+    public GEPInst createGEPInst(Value from, Type toValueType, Value index, boolean flag) {
+        Value to = new Value(toValueType, getRegName());
         GEPInst inst = new GEPInst(block, from, to, index, flag);
         block.addInst(inst);
 
@@ -183,7 +183,7 @@ public class IRBuilder {
     }
 
     public FuncCallInst createFuncCallInst(String name, ArrayList<Value> params) {
-        Function function = (Function) curTable.findSymbolInAll('@' + name);
+        Function function = (Function) curTable.findSymbolInAll("@" + name);
 
         User user;
         if (function.getType().equals(IntType.INT32_TYPE)) {

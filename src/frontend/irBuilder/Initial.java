@@ -47,14 +47,17 @@ public class Initial {
 
         @Override
         public String toString () {
-            StringBuilder builder = new StringBuilder("[");
-            builder.append(initValues.get(0).getType()).append(" ").append(initValues.get(0));
-            if (initValues.size() > 1) {
-                for (int i = 1, len = initValues.size(); i < len; i++) {
-                    builder.append(", ").append(initValues.get(i).getType()).append(" ").append(initValues.get(i));
-                }
-            }
-            return builder.append("]").toString();
+            return "[" + initValues.stream().map(initial -> initial.getType() + " " + initial)
+                    .reduce((x, y) -> x + ", " + y).orElse("") + "]";
+        }
+    }
+
+    public static class ZeroInitial extends Initial {
+        public ZeroInitial(Type type) { super(type); }
+
+        @Override
+        public String toString() {
+            return "zeroinitializer";
         }
     }
 }

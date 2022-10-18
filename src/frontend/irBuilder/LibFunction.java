@@ -12,19 +12,17 @@ public class LibFunction extends Function {
     public static LibFunction PUT_ARRAY = new LibFunction(VoidType.VOID_TYPE, "putarray",
             IntType.INT32_TYPE, new PointerType(IntType.INT32_TYPE));
 
-    private final Type retType;
-    private final String name;
     private final Type[] params;
 
     private LibFunction(Type type, String name, Type... params) {
-        retType = type;
+        this.type = type;
         this.name = "@" + name;
         this.params = params;
     }
 
     @Override
     public String toString() {
-        return "declare " + retType + " " + name + "(" +
-                Arrays.stream(params).map(Objects::toString).reduce((x, y) -> x + ", " + y).orElse("") + ')';
+        return "declare " + type + " " + name + "(" +
+                Arrays.stream(params).map(Objects::toString).reduce((x, y) -> x + ", " + y).orElse("") + ")";
     }
 }

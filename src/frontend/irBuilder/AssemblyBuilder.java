@@ -126,6 +126,21 @@ public class AssemblyBuilder {
         return new ConstantInt(res);
     }
 
+    private void initLocalVar(Value pointer, Initial init) {
+        PointerType pointerType = (PointerType) pointer.getType();
+        Type innerType = pointerType.getInnerType();
+        if (innerType.isInt32Type()) {
+            builder.createStrInst(((ValueInitial) init).getValue(), pointer);
+        } else {
+            ArrayType arrayType = (ArrayType) innerType;
+            PointerType toType = new PointerType(arrayType.getBaseType());
+            ArrayInitial arrayInitial = (ArrayInitial) init;
+            for (int i = 0, len = arrayType.getSize(); i < len; i++)
+                initLocalVar(builder.createGEPInst(pointer, toType, new ConstantInt(i), true).getTo(),
+                        arrayInitial.getInitValues().get(i));
+        }
+    }
+
     public void visit(SysYCompilationUnit node) {
         inGlobal = true;
         for (SysYBlockItem item : node.getDecls()) {
@@ -216,15 +231,18 @@ public class AssemblyBuilder {
             }
         }
         if (inGlobal) {
-            Initial initValue = init == null ? null : visit(init, type);
+            // initial global variables and constants
+            Initial initValue;
+            if (init == null) {
+                // 隐式初始化为0
+                initValue = type == IntType.INT32_TYPE ? new ValueInitial(type, ConstantInt.getZero())
+                        : new ZeroInitial(type);
+            } else initValue = visit(init, type);
             module.addGlobal(builder.createGlobalVar(node.isConst(), type, node.getName(), initValue));
         } else {
+            // 初始化局部变量
             builder.createAllocInst(type, "*", node.getName());
-            Initial initValue = init == null ? null : visit(init, type);
-            if (type.isInt32Type()) {
-                Value value = initValue == null ? null : ((ValueInitial) initValue).getValue();
-                builder.createStrInst(node.getName(), value);
-            }
+            initLocalVar(builder.getValueFromTable(node.getName()), visit(init, type));
         }
     }
 
@@ -247,6 +265,8 @@ public class AssemblyBuilder {
             visit((SysYBreak) node);
         } else if (node instanceof SysYExpressionStatement) {
             visit((SysYExpressionStatement) node);
+        } else if (node instanceof SysYPrintf) {
+            visit((SysYPrintf) node);
         }
     }
 
@@ -349,6 +369,34 @@ public class AssemblyBuilder {
             return visit((SysYLVal) node, false);
         } else if (node instanceof SysYFuncCall) {
             return visit((SysYFuncCall) node);
+        } else if (node instanceof SysYGetInt) {
+            return visit((SysYGetInt) node);
+        } else if (node instanceof SysYPrintf) {
+            return visit((SysYPrintf) node);
+        }
+        return null;
+    }
+
+    public Value visit(SysYGetInt node) {
+        return builder.createFuncCallInst("getint", new ArrayList<>()).getResValue();
+    }
+
+    public Value visit(SysYPrintf node) {
+        String[] strings = node.getFormat().substring(1, node.getFormat().length() - 1)
+                .replace("\\n", "\n").split("%d");
+        Object[] objects = node.getExps().stream().map(this::visit).toArray();
+        for (int i = 0, len = strings.length; i < len; i++) {
+            for (char ch : strings[i].toCharArray()) {
+                builder.createFuncCallInst("putch", new ArrayList<Value>() {{
+                    add(new ConstantInt(ch));
+                }});
+            }
+            if (i < len - 1) {
+                int finalI = i;
+                builder.createFuncCallInst("putint", new ArrayList<Value>() {{
+                    add((Value) objects[finalI]);
+                }});
+            }
         }
         return null;
     }
@@ -358,8 +406,7 @@ public class AssemblyBuilder {
         for (SysYExpression exp : node.getFuncRParams()) {
             params.add(visit(exp));
         }
-        FuncCallInst inst = builder.createFuncCallInst(node.getName(), params);
-        return inst.getResValue();
+        return builder.createFuncCallInst(node.getName(), params).getResValue();
     }
 
     public Value visit(SysYUnaryExp node) {
@@ -407,9 +454,8 @@ public class AssemblyBuilder {
     }
 
     public Value visit(SysYLVal node, boolean needPointer) {
-        IdentKind identKind = builder.getKindOfValue(node.getName());
-        int dim = node.getDimensions();
         Value pointer = builder.getValueFromTable(node.getName());
+        if (pointer instanceof ConstantInt) return pointer;
         Type innerType = ((PointerType) pointer.getType()).getInnerType();
         ArrayList<Value> indexes = new ArrayList<>();
         if (node.getFirstExp() != null) {

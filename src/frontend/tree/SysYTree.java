@@ -513,13 +513,21 @@ public abstract class SysYTree {
 
     public static class SysYPrintf extends SysYExpression {
         public int line;
-        public String format;
-        public List<SysYExpression> exps;
+        private final String format;
+        private final List<SysYExpression> exps;
 
         public SysYPrintf(int line, String format, List<SysYExpression> exps) {
             this.line = line;
             this.format = format;
             this.exps = exps;
+        }
+
+        public String getFormat() {
+            return format;
+        }
+
+        public List<SysYExpression> getExps() {
+            return exps;
         }
 
         @Override
