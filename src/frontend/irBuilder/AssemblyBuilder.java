@@ -58,6 +58,11 @@ public class AssemblyBuilder {
             writer.writeln("}");
             writer.writeln("");
         }
+        /*
+        writer.writeln("define dso_local i32 @main(){");
+        writer.writeln("\tret i32 0");
+        writer.writeln("}");
+         */
     }
 
     /*------------------------------

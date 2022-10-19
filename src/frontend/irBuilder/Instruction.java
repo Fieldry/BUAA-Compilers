@@ -27,8 +27,8 @@ public abstract class Instruction extends User {
         public enum BinaryOp {
             MUL, SDIV, SREM,
             ADD, SUB,
-            EQ, NE,
             SGT, SGE, SLT, SLE,
+            EQ, NE,
             AND,
             OR;
 
