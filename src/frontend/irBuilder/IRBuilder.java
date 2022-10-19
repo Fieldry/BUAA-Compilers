@@ -4,6 +4,7 @@ import frontend.irBuilder.Instruction.*;
 import frontend.irBuilder.Type.*;
 import frontend.irBuilder.Instruction.BinaryInst.BinaryOp;
 import frontend.irBuilder.Initial.*;
+import frontend.token.Tokens;
 import frontend.token.Tokens.Token;
 import frontend.symbolTable.SymbolValueTable;
 
@@ -197,11 +198,11 @@ public class IRBuilder {
         return inst;
     }
 
-    public BinaryInst createBinaryInst(Token token, Value lValue, Value rValue) {
+    public BinaryInst createBinaryInst(Tokens.TokenKind token, Value lValue, Value rValue) {
         String regName = getRegName();
         User user;
         BinaryInst res;
-        switch (token.getTokenKind()) {
+        switch (token) {
             case PLUS: {
                 user = new User(IntType.INT32_TYPE, regName, lValue, rValue);
                 res = new BinaryInst(block, BinaryOp.ADD, lValue, rValue, user);
@@ -224,7 +225,7 @@ public class IRBuilder {
             }
             case MOD: {
                 user = new User(IntType.INT32_TYPE, regName, lValue, rValue);
-                res = new BinaryInst(block, BinaryOp.REM, lValue, rValue, user);
+                res = new BinaryInst(block, BinaryOp.SREM, lValue, rValue, user);
                 break;
             }
             case GEQ: {
@@ -257,6 +258,16 @@ public class IRBuilder {
                 res = new BinaryInst(block, BinaryOp.NE, lValue, rValue, user);
                 break;
             }
+            case AND: {
+                user = new User(IntType.INT32_TYPE, regName, lValue, rValue);
+                res = new BinaryInst(block, BinaryOp.AND, lValue, rValue, user);
+                break;
+            }
+            case OR: {
+                user = new User(IntType.INT32_TYPE, regName, lValue, rValue);
+                res = new BinaryInst(block, BinaryOp.OR, lValue, rValue, user);
+                break;
+            }
             default: {
                 return null;
             }
@@ -268,12 +279,11 @@ public class IRBuilder {
         return res;
     }
 
-    public BinaryInst createSub(Value lValue, Value rValue) {
-        String regName = getRegName();
-        User user = new User(IntType.INT32_TYPE, regName, lValue, rValue);
-        lValue.addUse(user);
-        rValue.addUse(user);
-        return new BinaryInst(block, BinaryOp.SUB, lValue, rValue, user);
+    public ZExtInst createZExtInst(Value from) {
+        Value to = new Value(IntType.INT32_TYPE, getRegName());
+        ZExtInst inst = new ZExtInst(block, from, to);
+        block.addInst(inst);
+        return inst;
     }
 
     public Value createConst(int value) {

@@ -7,7 +7,6 @@ import frontend.irBuilder.Instruction.*;
 import frontend.irBuilder.LoopRecord.Pair;
 import frontend.irBuilder.Type.*;
 import frontend.irBuilder.Initial.*;
-import frontend.irBuilder.IRBuilder.IdentKind;
 import io.Writer;
 
 import java.util.ArrayList;
@@ -28,13 +27,16 @@ public class AssemblyBuilder {
     private BasicBlock curBBlock;
     private boolean inGlobal;
 
+    private final boolean debug = false;
+
     public AssemblyBuilder(Writer writer, Module module) {
         this.writer = writer;
         this.module = module;
     }
 
     public void generateLLVM(SysYCompilationUnit node) {
-        writer.setLlvmBw();
+        if (debug) writer.setStdOut();
+        else writer.setLlvmBw();
         declareLibFunc();
         visit(node);
         if (!module.getGlobalList().isEmpty()) {
@@ -44,13 +46,14 @@ public class AssemblyBuilder {
             writer.writeln("");
         }
         for (Function function : module.getFunctionList()) {
-            writer.writeln(function + " {");
+            writer.writeln(function + "{");
             for (BasicBlock bBlock : function.getBBlockList()) {
                 writer.writeln(bBlock.getName() + ":");
                 for (Instruction inst : bBlock.getInstList()) {
                     writer.writeln("\t" + inst);
                 }
                 writer.writeln("\t" + bBlock.getTerminator());
+                writer.writeln("");
             }
             writer.writeln("}");
             writer.writeln("");
@@ -73,6 +76,8 @@ public class AssemblyBuilder {
 
     private BasicBlock createNewBlock(boolean set) {
         BasicBlock temp = curBBlock;
+        // 减少不必要的基本块
+        // if (curBBlock.getInstList().isEmpty()) return curBBlock;
         curBBlock = builder.createBlock(curFunction);
         curFunction.addBBlock(curBBlock);
         if (set && temp.getTerminator() == null) {
@@ -188,7 +193,6 @@ public class AssemblyBuilder {
 
         builder.createSymbolTable();
         visit((SysYBlock) node.getBlock());
-        if (curBBlock.getTerminator() == null) builder.createRetInst(null);
         builder.recallSymbolTable();
     }
 
@@ -242,7 +246,7 @@ public class AssemblyBuilder {
         } else {
             // 初始化局部变量
             builder.createAllocInst(type, "*", node.getName());
-            initLocalVar(builder.getValueFromTable(node.getName()), visit(init, type));
+            if (init != null) initLocalVar(builder.getValueFromTable(node.getName()), visit(init, type));
         }
     }
 
@@ -280,55 +284,77 @@ public class AssemblyBuilder {
         builder.createStrInst(value, left);
     }
 
-    public void visit(SysYIf node) {
+    private void visitEqHelper(SysYEqExp cond, SysYStatement trueBlock, SysYStatement falseBlock) {
         // main block
-        Value cond = visit(node.getCond());
-        BranchInst inst = builder.createBranchInst(cond);
+        Value condValue = visit(cond);
+        if (!condValue.getType().isInt1Type())
+            condValue = builder.createBinaryInst(Tokens.TokenKind.NEQ, condValue, ConstantInt.getZero()).getResValue();
+        BranchInst inst = builder.createBranchInst(condValue);
         curBBlock.setTerminator(inst);
 
-        // first if block
+        // save while cond block
+        if (!loopStack.empty() && loopStack.peek().getCondBlock() == null)
+            loopStack.peek().setCondBlock(curBBlock);
+
+        // It's certain that the cond block has terminator.
+        // first if block -- then block
         createNewBlock(false);
         inst.setThenBlock(curBBlock);
-        visit(node.getThenStmt());
+        visit(trueBlock);
 
-
-        createNewBlock(false);
+        BasicBlock thenTemp = createNewBlock(false);
         inst.setElseBlock(curBBlock);
-        if (node.getElseStmt() != null) {
-            // second if block
-            visit(node.getElseStmt());
+        if (falseBlock != null) {
+            visit(falseBlock);
+            BasicBlock elseTemp = createNewBlock(false);
+            elseTemp.setTerminator(builder.createBranchInst(curBBlock));
+        }
+        thenTemp.setTerminator(builder.createBranchInst(curBBlock));
+    }
 
-            // block after if statement
-            createNewBlock(true);
-            inst.getThenBlock().setTerminator(builder.createBranchInst(curBBlock));
-            if (inst.getElseBlock().getTerminator() == null)
-                inst.getElseBlock().setTerminator(builder.createBranchInst(curBBlock));
+    private void visitLAndHelper(SysYLAndExp cond, SysYStatement trueBlock, SysYStatement falseBlock) {
+        if (cond.getToken() == null) {
+            visitEqHelper((SysYEqExp) cond.getLeftExp(), trueBlock, falseBlock);
         } else {
-            // block after if statement
-            inst.getThenBlock().setTerminator(builder.createBranchInst(curBBlock));
+            visitLAndHelper((SysYLAndExp) cond.getLeftExp(),
+                    new SysYIf(cond.getRightExp(), trueBlock, falseBlock), falseBlock);
         }
     }
 
-    public void visit(SysYWhile node) {
-        createNewBlock(true);
+    private void visitLOrHelper(SysYLOrExp cond, SysYStatement trueBlock, SysYStatement falseBlock) {
+        if (cond.getToken() == null) {
+            visitLAndHelper((SysYLAndExp) cond.getLeftExp(), trueBlock, falseBlock);
+        } else {
+            visitLOrHelper((SysYLOrExp) cond.getLeftExp(), trueBlock,
+                    new SysYIf(cond.getRightExp(), trueBlock, falseBlock));
+        }
+    }
 
-        // condition block
-        Value cond = visit(node.getCond());
-        BranchInst inst = builder.createBranchInst(cond);
-        curBBlock.setTerminator(inst);
+    private void visitIfHelper(SysYExpression cond, SysYStatement trueBlock, SysYStatement falseBlock) {
+        if (cond instanceof SysYCond)
+            visitLOrHelper((SysYLOrExp) ((SysYCond) cond).getCond(), trueBlock, falseBlock);
+        else if (cond instanceof SysYLOrExp)
+            visitLOrHelper((SysYLOrExp) cond, trueBlock, falseBlock);
+        else if (cond instanceof SysYLAndExp)
+            visitLAndHelper((SysYLAndExp) cond, trueBlock, falseBlock);
+        else visitEqHelper((SysYEqExp) cond, trueBlock, falseBlock);
+    }
+
+    public void visit(SysYIf node) {
+        visitIfHelper(node.getCond(), node.getThenStmt(), node.getElseStmt());
+    }
+
+    private void visitWhileHelper(SysYExpression cond, SysYStatement trueBlock) {
+        createNewBlock(true);
 
         // push loop block into stack
         loopStack.push(new LoopRecord());
 
-        // loop body
-        BasicBlock condBlock = createNewBlock(false);
-        inst.setThenBlock(curBBlock);
-        visit(node.getStmt());
-        curBBlock.setTerminator(builder.createBranchInst(condBlock));
+        visitIfHelper(cond, trueBlock, new SysYBreak());
 
-        // block after loop
+        BasicBlock condBlock = loopStack.peek().getCondBlock();
+        curBBlock.setTerminator(builder.createBranchInst(condBlock));
         createNewBlock(false);
-        inst.setElseBlock(curBBlock);
 
         // handle continue and break
         for (Pair pair : loopStack.peek().getRecords()) {
@@ -341,6 +367,10 @@ public class AssemblyBuilder {
 
         // pop stack
         loopStack.pop();
+    }
+
+    public void visit(SysYWhile node) {
+        visitWhileHelper(node.getCond(), node.getStmt());
     }
 
     public void visit(SysYContinue node) {
@@ -414,16 +444,16 @@ public class AssemblyBuilder {
         if (value instanceof ConstantInt) {
             return evaluate(node.getUnaryOp(), value);
         } else if (node.getUnaryOp().getTokenKind() == Tokens.TokenKind.MINUS){
-            BinaryInst inst = builder.createBinaryInst(node.getUnaryOp(), ConstantInt.getZero(), value);
-            curBBlock.addInst(inst);
-            return inst.getResValue();
+            return builder.createBinaryInst(node.getUnaryOp().getTokenKind(),
+                    ConstantInt.getZero(), value).getResValue();
+        } else if (node.getUnaryOp().getTokenKind() == Tokens.TokenKind.NOT) {
+            return builder.createBinaryInst(Tokens.TokenKind.EQL, value, ConstantInt.getZero()).getResValue();
         } else {
             return value;
         }
     }
 
     public Value visit(SysYBinaryExp node) {
-        BinaryInst inst;
         if (node.getToken() == null) {
             return visit(node.getLeftExp());
         } else {
@@ -431,8 +461,9 @@ public class AssemblyBuilder {
             if (lValue instanceof ConstantInt && rValue instanceof ConstantInt)
                 return evaluate(node.getToken(), lValue, rValue);
             else {
-                inst = builder.createBinaryInst(node.getToken(), lValue, rValue);
-                return inst.getResValue();
+                if (lValue.getType().isInt1Type()) lValue = builder.createZExtInst(lValue).getTo();
+                if (rValue.getType().isInt1Type()) rValue = builder.createZExtInst(rValue).getTo();
+                return builder.createBinaryInst(node.getToken().getTokenKind(), lValue, rValue).getResValue();
             }
         }
     }
@@ -482,37 +513,6 @@ public class AssemblyBuilder {
             }
             else return builder.createLdInst(pointer).getTo();
         }
-
-
-//        switch (dim) {
-//            case 0: {
-//                if (pointer || inGlobal) return builder.getValueFromTable(node.getName());
-//                else return builder.createLdInst(node.getName()).getTo();
-//            }
-//            case 1: {
-//                GEPInst inst;
-//                if (identKind == IdentKind.FUNC_PARAM)
-//                    inst = builder.createGEPInst(builder.createLdInst(node.getName()).getTo(),
-//                            dim, visit(node.getFirstExp()));
-//                else
-//                    inst = builder.createGEPInst(node.getName(), dim, visit(node.getFirstExp()));
-//                if (pointer) return inst.getTo();
-//                else return builder.createLdInst(inst.getTo()).getTo();
-//            }
-//            case 2: {
-//                GEPInst inst;
-//                if (identKind == IdentKind.FUNC_PARAM)
-//                    inst = builder.createGEPInst(builder.createLdInst(node.getName()).getTo(),
-//                            dim, visit(node.getFirstExp()), visit(node.getSecondExp()));
-//                else inst = builder.createGEPInst(node.getName(), dim,
-//                        visit(node.getFirstExp()), visit(node.getSecondExp()));
-//                if (pointer) return inst.getTo();
-//                else return builder.createLdInst(inst.getTo()).getTo();
-//            }
-//            default: {
-//                return null;
-//            }
-//        }
     }
 
     public Value visit(SysYCond node) {

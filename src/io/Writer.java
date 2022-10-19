@@ -6,6 +6,7 @@ import frontend.exception.SysYException;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 
 public class Writer {
@@ -71,6 +72,8 @@ public class Writer {
     public void setLlvmBw() { bw = llvmBw; }
 
     public void setMipsBw() { bw = mipsBw; }
+
+    public void setStdOut() { bw = new BufferedWriter(new PrintWriter(System.out)); }
 
     public void write(String string) {
         try {

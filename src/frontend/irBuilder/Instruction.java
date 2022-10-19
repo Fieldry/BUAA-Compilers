@@ -25,7 +25,7 @@ public abstract class Instruction extends User {
 
     public static class BinaryInst extends Instruction {
         public enum BinaryOp {
-            MUL, SDIV, REM,
+            MUL, SDIV, SREM,
             ADD, SUB,
             EQ, NE,
             SGT, SGE, SLT, SLE,
@@ -136,40 +136,23 @@ public abstract class Instruction extends User {
         }
     }
 
-    public static class IcmpInst extends Instruction {
-        public enum CmpOp {
-            EQ, NE,
-            GT, GE, LT, LE;
+    public static class ZExtInst extends Instruction {
+        private final Value from;
+        private final Value to;
 
-            @Override
-            public String toString() {
-                return this.name().toLowerCase(Locale.ROOT);
-            }
-        }
-        private final CmpOp op;
-        private final Value lValue;
-        private final Value rValue;
-        private final Value resValue;
-
-        public IcmpInst(BasicBlock parent, CmpOp op, Value lValue, Value rValue, Value resValue) {
-            super(parent);
-            this.op = op;
-            this.lValue = lValue;
-            this.rValue = rValue;
-            this.resValue = resValue;
+        public ZExtInst(BasicBlock block, Value from, Value to) {
+            super(block);
+            this.from = from;
+            this.to = to;
         }
 
-        public CmpOp getOp() { return op; }
+        public Value getFrom() { return from; }
 
-        public Value getLValue() { return lValue; }
-
-        public Value getRValue() { return rValue; }
-
-        public Value getResValue() { return resValue; }
+        public Value getTo() { return to; }
 
         @Override
         public String toString() {
-            return resValue + " = icmp " + op + " " + lValue.getType() + " " + lValue + ", " + rValue;
+            return to + " = zext " + from.getType() + " " + from + " to " + to.getType();
         }
     }
 
@@ -213,8 +196,8 @@ public abstract class Instruction extends User {
         @Override
         public String toString() {
             if (cond != null)
-                return "br " + cond.getType() + " " + cond + ", label " + thenBlock + ", label " + elseBlock;
-            else return "br " + thenBlock;
+                return "br " + cond.getType() + " " + cond + ", label %" + thenBlock + ", label %" + elseBlock;
+            else return "br label %" + thenBlock;
         }
     }
 

@@ -67,12 +67,6 @@ public class Compiler {
         writer.writeErrors(errors);
          */
 
-//        try {
-//            builder.generateLLVM(compUnit);
-//        } catch (Exception e) {
-//            System.err.println(e);
-//        }
-
         builder.generateLLVM(compUnit);
 
         writer.close();

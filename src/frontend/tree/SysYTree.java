@@ -408,7 +408,9 @@ public abstract class SysYTree {
     }
 
     public static class SysYBreak extends SysYStatement {
-        public int line;
+        private int line;
+
+        public SysYBreak() {}
 
         public SysYBreak(int line) {
             this.line = line;
@@ -856,7 +858,7 @@ public abstract class SysYTree {
     }
 
     public static class SysYCond extends SysYExpression {
-       private final SysYExpression cond;
+        private final SysYExpression cond;
 
         public SysYCond(SysYExpression cond) { this.cond = cond; }
 
