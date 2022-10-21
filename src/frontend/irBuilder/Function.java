@@ -31,7 +31,7 @@ public class Function extends GlobalValue {
     @Override
     public String toString() {
         return  "define dso_local " + type + " " + name + "(" +
-                params.stream().map(value -> value.getType() + " " + value)
+                params.stream().map(value -> value.getType().toString())
                         .reduce((x, y) -> x + ", " + y).orElse("") + ")";
     }
 }

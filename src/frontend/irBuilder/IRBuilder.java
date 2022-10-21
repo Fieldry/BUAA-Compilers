@@ -27,7 +27,7 @@ public class IRBuilder {
         GLOBAL("@"),
         LOCAL("*"),
         FUNC_PARAM("$");
-        private String prefix;
+        private final String prefix;
 
         IdentKind(String prefix) { this.prefix = prefix; }
 
@@ -122,10 +122,6 @@ public class IRBuilder {
         return inst;
     }
 
-    public MemoryInst createLdInst(String name) {
-        return createLdInst(getValueFromTable(name));
-    }
-
     public MemoryInst createLdInst(Value from) {
         Type type = ((PointerType) from.getType()).getInnerType();
         Value to = new Value(type, getRegName());
@@ -134,45 +130,11 @@ public class IRBuilder {
         return inst;
     }
 
-    public GEPInst createGEPInst(String name, int dim, Value... indexes) {
-        GEPInst inst;
-        Value from = getValueFromTable(name);
-
-        Type type = ((ArrayType) (((PointerType) from.getType()).getInnerType())).getBaseType();
-        Value to = new Value(new PointerType(type), getRegName());
-        inst = new GEPInst(block, from, to, indexes[0], true);
-        block.addInst(inst);
-
-        if (dim == 2) {
-            from = to;
-            to = new Value(new PointerType(IntType.INT32_TYPE), getRegName());
-            inst = new GEPInst(block, from, to, indexes[1], true);
-            block.addInst(inst);
-        }
-        return inst;
-    }
-
     public GEPInst createGEPInst(Value from, Type toValueType, Value index, boolean flag) {
         Value to = new Value(toValueType, getRegName());
         GEPInst inst = new GEPInst(block, from, to, index, flag);
         if(block != null) block.addInst(inst);
 
-        return inst;
-    }
-
-    public GEPInst createGEPInst(Value from, int dim, Value... indexes) {
-        GEPInst inst;
-        Type type = ((PointerType) from.getType()).getInnerType();
-        Value to = new Value(new PointerType(type), getRegName());
-        inst = new GEPInst(block, from, to, indexes[0], false);
-        block.addInst(inst);
-
-        if (dim == 2) {
-            from = to;
-            to = new Value(new PointerType(IntType.INT32_TYPE), getRegName());
-            inst = new GEPInst(block, from, to, indexes[1], true);
-            block.addInst(inst);
-        }
         return inst;
     }
 

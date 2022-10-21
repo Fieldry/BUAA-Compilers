@@ -28,14 +28,13 @@ public class AssemblyBuilder {
     private BasicBlock curBBlock;
     private boolean inGlobal;
 
-    private final boolean debug = false;
-
     public AssemblyBuilder(Writer writer, Module module) {
         this.writer = writer;
         this.module = module;
     }
 
     public void generateLLVM(SysYCompilationUnit node) {
+        boolean debug = false;
         if (debug) writer.setStdOut();
         else writer.setLlvmBw();
         declareLibFunc();
@@ -47,14 +46,14 @@ public class AssemblyBuilder {
             writer.writeln("");
         }
         for (Function function : module.getFunctionList()) {
-            writer.writeln(function + "{");
+            writer.write(function + "{");
             for (BasicBlock bBlock : function.getBBlockList()) {
-                writer.writeln(bBlock.getName() + ":");
+                writer.writeln("");
+                writer.writeln(";<label>:" + bBlock.getName() + ":");
                 for (Instruction inst : bBlock.getInstList()) {
                     writer.writeln("\t" + inst);
                 }
                 writer.writeln("\t" + bBlock.getTerminator());
-                writer.writeln("");
             }
             writer.writeln("}");
             writer.writeln("");
@@ -225,7 +224,10 @@ public class AssemblyBuilder {
     public void visit(SysYBlock node) {
         for (int i = 0, len = node.getBlock().size(); i < len; i++) {
             SysYBlockItem blockItem = node.getBlock().get(i);
-            if (blockItem instanceof SysYStatement) visit((SysYStatement) blockItem);
+            if (blockItem instanceof SysYStatement) {
+                visit((SysYStatement) blockItem);
+                if (blockItem instanceof SysYContinue || blockItem instanceof SysYBreak) return;
+            }
             else visit((SysYDecl) blockItem);
         }
     }
