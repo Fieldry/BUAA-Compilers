@@ -154,6 +154,7 @@ public class Tokenizer {
                 break;
             } else {
                 System.out.println("Unexpected char:" + reader.getChar());
+                System.exit(1);
                 break;
             }
         }

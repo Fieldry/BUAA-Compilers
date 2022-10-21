@@ -155,7 +155,7 @@ public class IRBuilder {
     public GEPInst createGEPInst(Value from, Type toValueType, Value index, boolean flag) {
         Value to = new Value(toValueType, getRegName());
         GEPInst inst = new GEPInst(block, from, to, index, flag);
-        block.addInst(inst);
+        if(block != null) block.addInst(inst);
 
         return inst;
     }

@@ -10,6 +10,7 @@ import frontend.irBuilder.Initial.*;
 import io.Writer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Stack;
 
 public class AssemblyBuilder {
@@ -58,11 +59,21 @@ public class AssemblyBuilder {
             writer.writeln("}");
             writer.writeln("");
         }
+
         /*
         writer.writeln("define dso_local i32 @main(){");
+        writer.writeln("\tcall void @putch(i32 49)");
+        writer.writeln("\tcall void @putch(i32 57)");
+        writer.writeln("\tcall void @putch(i32 50)");
+        writer.writeln("\tcall void @putch(i32 52)");
+        writer.writeln("\tcall void @putch(i32 49)");
+        writer.writeln("\tcall void @putch(i32 48)");
+        writer.writeln("\tcall void @putch(i32 55)");
+        writer.writeln("\tcall void @putch(i32 56)");
+        writer.writeln("\tcall void @putch(i32 10)");
         writer.writeln("\tret i32 0");
         writer.writeln("}");
-         */
+        */
     }
 
     /*------------------------------
@@ -132,6 +143,9 @@ public class AssemblyBuilder {
                 res = -value;
                 break;
             }
+            case NOT: {
+                res = (value == 0) ? 1 : 0;
+            }
         }
         return new ConstantInt(res);
     }
@@ -186,7 +200,13 @@ public class AssemblyBuilder {
             builder.createStrInst(symbol.getName(), value);
         }
         visit((SysYBlock) node.getBlock());
-        if (curBBlock.getTerminator() == null) builder.createRetInst(null);
+        if (curBBlock.needTerminator()) {
+            if (node.isReturnInt()) {
+                builder.createRetInst(ConstantInt.getZero());
+            } else {
+                builder.createRetInst(null);
+            }
+        }
         builder.recallSymbolTable();
     }
 
@@ -198,6 +218,7 @@ public class AssemblyBuilder {
 
         builder.createSymbolTable();
         visit((SysYBlock) node.getBlock());
+        if (curBBlock.needTerminator()) builder.createRetInst(ConstantInt.getZero());
         builder.recallSymbolTable();
     }
 
@@ -312,9 +333,11 @@ public class AssemblyBuilder {
         if (falseBlock != null) {
             visit(falseBlock);
             BasicBlock elseTemp = createNewBlock(false);
-            elseTemp.setTerminator(builder.createBranchInst(curBBlock));
+            if (elseTemp.needTerminator())
+                elseTemp.setTerminator(builder.createBranchInst(curBBlock));
         }
-        thenTemp.setTerminator(builder.createBranchInst(curBBlock));
+        if (thenTemp.needTerminator())
+            thenTemp.setTerminator(builder.createBranchInst(curBBlock));
     }
 
     private void visitLAndHelper(SysYLAndExp cond, SysYStatement trueBlock, SysYStatement falseBlock) {
@@ -417,11 +440,11 @@ public class AssemblyBuilder {
     }
 
     public Value visit(SysYPrintf node) {
-        String[] strings = node.getFormat().substring(1, node.getFormat().length() - 1)
-                .replace("\\n", "\n").split("%d");
+        Object[] strings = Arrays.stream(node.getFormat().replace("\\n", "\n").split("%d"))
+                .map(s -> s.replace("\"", "")).toArray();
         Object[] objects = node.getExps().stream().map(this::visit).toArray();
         for (int i = 0, len = strings.length; i < len; i++) {
-            for (char ch : strings[i].toCharArray()) {
+            for (char ch : ((String) strings[i]).toCharArray()) {
                 builder.createFuncCallInst("putch", new ArrayList<Value>() {{
                     add(new ConstantInt(ch));
                 }});
@@ -463,7 +486,8 @@ public class AssemblyBuilder {
             return visit(node.getLeftExp());
         } else {
             Value lValue = visit(node.getLeftExp()), rValue = visit(node.getRightExp());
-            if (lValue instanceof ConstantInt && rValue instanceof ConstantInt)
+            if (lValue instanceof ConstantInt && rValue instanceof ConstantInt
+                    && node.getToken().getTokenKind().isALUOp())
                 return evaluate(node.getToken(), lValue, rValue);
             else {
                 if (lValue.getType().isInt1Type()) lValue = builder.createZExtInst(lValue).getTo();

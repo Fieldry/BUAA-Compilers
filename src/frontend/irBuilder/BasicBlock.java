@@ -26,6 +26,8 @@ public class BasicBlock extends Value {
 
     public void setTerminator(Instruction terminator) { this.terminator = terminator; }
 
+    public boolean needTerminator() { return terminator == null; }
+
     @Override
     public String toString() {
         return name;

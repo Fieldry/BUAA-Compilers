@@ -145,9 +145,13 @@ public class MIPSCode extends INode {
     }
 
     public static class LoadImmCode extends MIPSCode {
+        private final Register reg;
         private final ImmNum imm;
 
-        public LoadImmCode(ImmNum imm) { this.imm = imm; }
+        public LoadImmCode(Register reg, ImmNum imm) { 
+            this.reg = reg;
+            this.imm = imm;
+        }
 
         public ImmNum getImm() { return imm; }
 

@@ -86,6 +86,16 @@ public class Tokens {
             return code;
         }
 
+        public boolean isALUOp() {
+            switch (this) {
+                case STAR: case DIV: case MOD:
+                case PLUS: case MINUS:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         @Override
         public String toString() { return this.code; }
     }
