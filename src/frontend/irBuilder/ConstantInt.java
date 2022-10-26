@@ -1,6 +1,6 @@
 package frontend.irBuilder;
 
-public class ConstantInt extends User {
+public class ConstantInt extends Value {
     private final int value;
     private static final ConstantInt zero = new ConstantInt(0);
 

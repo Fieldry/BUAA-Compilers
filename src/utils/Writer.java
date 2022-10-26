@@ -1,4 +1,4 @@
-package io;
+package utils;
 
 import frontend.token.Tokens.Token;
 import frontend.exception.SysYException;

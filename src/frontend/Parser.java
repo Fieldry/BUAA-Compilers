@@ -4,7 +4,7 @@ import frontend.exception.SysYException;
 import frontend.exception.SysYException.EKind;
 import frontend.token.Tokens.*;
 import frontend.tree.SysYTree.*;
-import io.Writer;
+import utils.Writer;
 
 import java.util.ArrayList;
 import java.util.List;

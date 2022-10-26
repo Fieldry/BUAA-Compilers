@@ -44,5 +44,9 @@ public class Registers {
         public String getName() { return name; }
     }
 
+    public static Register getRegister() {
+
+        return null;
+    }
 
 }

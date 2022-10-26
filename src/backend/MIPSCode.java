@@ -157,26 +157,45 @@ public class MIPSCode extends INode {
 
         @Override
         public String toString() {
-            return "li " + imm;
+            return "li " + reg + ", " + imm;
+        }
+    }
+
+    public static class LoadAddressCode extends MIPSCode {
+        private final Register reg;
+        private final Label label;
+
+        public LoadAddressCode(Register reg, Label label) {
+            this.reg = reg;
+            this.label = label;
+        }
+
+        public Register getReg() { return reg; }
+
+        public Label getLabel() { return label; }
+
+        @Override
+        public String toString() {
+            return "la " + reg + ", " + label;
         }
     }
 
     public static class MoveCode extends MIPSCode {
         private final Register rs;
-        private final Register rd;
+        private final Register rt;
 
-        public MoveCode(Register rs, Register rd) {
+        public MoveCode(Register rs, Register rt) {
             this.rs = rs;
-            this.rd = rd;
+            this.rt = rt;
         }
 
         public Register getRs() { return rs; }
 
-        public Register getRd() { return rd; }
+        public Register getRt() { return rt; }
 
         @Override
         public String toString() {
-            return "move " + rd + ", " + rs;
+            return "move " + rt + ", " + rs;
         }
     }
 
@@ -195,6 +214,25 @@ public class MIPSCode extends INode {
         @Override
         public String toString() {
             return "nop";
+        }
+    }
+
+    public static class BnezCode extends MIPSCode {
+        private final Register reg;
+        private final Label label;
+
+        public BnezCode(Register reg, Label label) {
+            this.reg = reg;
+            this.label = label;
+        }
+
+        public Register getReg() { return reg; }
+
+        public Label getLabel() { return label; }
+
+        @Override
+        public String toString() {
+            return "bnez " + reg + ", " + label;
         }
     }
 }

@@ -6,7 +6,14 @@ import frontend.inodelist.INode;
 public class Value extends INode {
     private final IList<Use> useList = new IList<>();
     protected Type type;
+
+    /** The name of virtual register.
+     */
     protected String name;
+
+    /** The name of identifier if it exists.
+     */
+    protected String label;
 
     public Value() {}
 

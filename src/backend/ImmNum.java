@@ -1,7 +1,15 @@
 package backend;
 
+import frontend.irBuilder.ConstantInt;
+import frontend.irBuilder.Value;
+
 public class ImmNum {
     public static ImmNum Zero_Imm = new ImmNum(0);
+
+    public static ImmNum toImmNum(Value value) {
+        ConstantInt from = (ConstantInt) value;
+        return new ImmNum(from.getValue());
+    }
 
     private final int value;
 

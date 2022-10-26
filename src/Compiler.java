@@ -1,19 +1,13 @@
 import frontend.irBuilder.AssemblyBuilder;
 import frontend.irBuilder.Module;
-import frontend.symbolTable.SymbolSysYTable;
 import frontend.exception.SysYException;
 import frontend.token.Tokens;
-import frontend.tree.SysYTree;
 import frontend.tree.SysYTree.*;
 import frontend.Parser;
 import frontend.Scanner;
 import frontend.Tokenizer;
-import io.Reader;
-import io.Writer;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import utils.Reader;
+import utils.Writer;
 
 public class Compiler {
     public static Reader reader;

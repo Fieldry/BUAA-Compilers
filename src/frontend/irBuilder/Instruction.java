@@ -77,8 +77,6 @@ public abstract class Instruction extends User {
             this.value = value;
         }
 
-
-
         @Override
         public String toString() {
             return value + " = alloca " + value.getType();
@@ -97,6 +95,9 @@ public abstract class Instruction extends User {
         public Value getValue() {
             return value;
         }
+
+        @Override
+        public Type getType() { return type; }
 
         @Override
         public String toString() {

@@ -7,7 +7,7 @@ import frontend.irBuilder.Instruction.*;
 import frontend.irBuilder.LoopRecord.Pair;
 import frontend.irBuilder.Type.*;
 import frontend.irBuilder.Initial.*;
-import io.Writer;
+import utils.Writer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
