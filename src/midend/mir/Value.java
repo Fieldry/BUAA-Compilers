@@ -1,7 +1,7 @@
-package frontend.irBuilder;
+package midend.mir;
 
-import frontend.inodelist.IList;
-import frontend.inodelist.INode;
+import utils.inodelist.IList;
+import utils.inodelist.INode;
 
 public class Value extends INode {
     private final IList<Use> useList = new IList<>();
@@ -13,13 +13,19 @@ public class Value extends INode {
 
     /** The name of identifier if it exists.
      */
-    protected String label;
+    protected String ident;
 
     public Value() {}
 
     public Value(Type type, String name) {
         this.type = type;
         this.name = name;
+    }
+
+    public Value(Type type, String name, String ident) {
+        this.type = type;
+        this.name = name;
+        this.ident = ident;
     }
 
     public void addUse(User user) { useList.addBack(new Use(user, this)); }

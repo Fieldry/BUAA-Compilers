@@ -1,4 +1,4 @@
-package frontend.irBuilder;
+package midend.mir;
 
 public class GlobalValue extends User {
 

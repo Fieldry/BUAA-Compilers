@@ -1,12 +1,12 @@
-package frontend.irBuilder;
+package midend.mir;
 
 import frontend.token.Tokens;
 import frontend.tree.SysYTree;
 import frontend.tree.SysYTree.*;
-import frontend.irBuilder.Instruction.*;
-import frontend.irBuilder.LoopRecord.Pair;
-import frontend.irBuilder.Type.*;
-import frontend.irBuilder.Initial.*;
+import midend.mir.Instruction.*;
+import midend.mir.LoopRecord.Pair;
+import midend.mir.Type.*;
+import midend.mir.Initial.*;
 import utils.Writer;
 
 import java.util.ArrayList;
@@ -239,6 +239,7 @@ public class AssemblyBuilder {
     }
 
     public void visit(SysYDef node) {
+        boolean isConst = node.isConst();
         SysYInit init = (SysYInit) node.getInit();
         Type type;
         switch (node.getDimensions()) {
@@ -248,14 +249,14 @@ public class AssemblyBuilder {
             }
             case 1: {
                 int size = ((ConstantInt) visit(node.getFirstExp())).getValue();
-                type = new ArrayType(size, IntType.INT32_TYPE);
+                type = new ArrayType(isConst, size, IntType.INT32_TYPE);
                 break;
             }
             case 2: {
                 int firstSize = ((ConstantInt) visit(node.getFirstExp())).getValue();
                 int secondSize = ((ConstantInt) visit(node.getSecondExp())).getValue();
-                ArrayType secondArrayType = new ArrayType(secondSize, IntType.INT32_TYPE);
-                type = new ArrayType(firstSize, secondArrayType);
+                ArrayType secondArrayType = new ArrayType(isConst, secondSize, IntType.INT32_TYPE);
+                type = new ArrayType(isConst, firstSize, secondArrayType);
                 break;
             }
             default: {
@@ -273,8 +274,12 @@ public class AssemblyBuilder {
             module.addGlobal(builder.createGlobalVar(node.isConst(), type, node.getName(), initValue));
         } else {
             // 初始化局部变量
-            builder.createAllocInst(type, "*", node.getName());
-            if (init != null) initLocalVar(builder.getValueFromTable(node.getName()), visit(init, type));
+            if (isConst) {
+                builder.addLocalConstToTable(node.getName(), visit(init, type));
+            } else {
+                builder.createAllocInst(type, "*", node.getName());
+                if (init != null) initLocalVar(builder.getValueFromTable(node.getName()), visit(init, type));
+            }
         }
     }
 
@@ -517,14 +522,20 @@ public class AssemblyBuilder {
 
     public Value visit(SysYLVal node, boolean needPointer) {
         Value pointer = builder.getValueFromTable(node.getName());
-        if (pointer instanceof ConstantInt) return pointer;
-        Type innerType = ((PointerType) pointer.getType()).getInnerType();
         ArrayList<Value> indexes = new ArrayList<>();
         if (node.getFirstExp() != null) {
             indexes.add(visit(node.getFirstExp()));
             if (node.getSecondExp() != null) indexes.add(visit(node.getSecondExp()));
         }
 
+        if (pointer instanceof Initial) {
+            for (Value value : indexes) {
+                pointer = ((ArrayInitial) pointer).getInitValues().get(((ConstantInt) value).getValue());
+            }
+            return ((ValueInitial) pointer).getValue();
+        }
+
+        Type innerType = ((PointerType) pointer.getType()).getInnerType();
         for (Value value : indexes) {
             if (innerType instanceof PointerType) {
                 pointer = builder.createGEPInst(builder.createLdInst(pointer).getTo(), innerType, value, false).getTo();

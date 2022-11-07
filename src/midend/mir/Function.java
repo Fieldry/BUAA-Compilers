@@ -1,6 +1,6 @@
-package frontend.irBuilder;
+package midend.mir;
 
-import frontend.inodelist.IList;
+import utils.inodelist.IList;
 
 import java.util.ArrayList;
 

@@ -1,5 +1,5 @@
-import frontend.irBuilder.AssemblyBuilder;
-import frontend.irBuilder.Module;
+import midend.mir.AssemblyBuilder;
+import midend.mir.Module;
 import frontend.exception.SysYException;
 import frontend.token.Tokens;
 import frontend.tree.SysYTree.*;

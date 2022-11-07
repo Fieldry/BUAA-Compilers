@@ -1,6 +1,6 @@
-package frontend.irBuilder;
+package midend.mir;
 
-import frontend.inodelist.INode;
+import utils.inodelist.INode;
 
 public class Use extends INode {
     User user;

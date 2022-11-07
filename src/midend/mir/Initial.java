@@ -1,8 +1,8 @@
-package frontend.irBuilder;
+package midend.mir;
 
 import java.util.ArrayList;
 
-public class Initial {
+public class Initial extends Value {
     protected final Type type;
 
     public Initial(Type type) { this.type = type; }

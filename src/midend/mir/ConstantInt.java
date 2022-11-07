@@ -1,4 +1,4 @@
-package frontend.irBuilder;
+package midend.mir;
 
 public class ConstantInt extends Value {
     private final int value;

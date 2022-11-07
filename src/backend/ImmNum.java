@@ -1,7 +1,7 @@
 package backend;
 
-import frontend.irBuilder.ConstantInt;
-import frontend.irBuilder.Value;
+import midend.mir.ConstantInt;
+import midend.mir.Value;
 
 public class ImmNum {
     public static ImmNum Zero_Imm = new ImmNum(0);

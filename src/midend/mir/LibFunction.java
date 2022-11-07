@@ -1,6 +1,6 @@
-package frontend.irBuilder;
+package midend.mir;
 
-import frontend.irBuilder.Type.*;
+import midend.mir.Type.*;
 
 import java.util.Arrays;
 import java.util.Objects;

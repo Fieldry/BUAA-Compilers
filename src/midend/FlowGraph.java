@@ -1,9 +1,9 @@
 package midend;
 
-import frontend.irBuilder.BasicBlock;
-import frontend.irBuilder.Function;
-import frontend.irBuilder.Module;
-import frontend.irBuilder.Instruction.BranchInst;
+import midend.mir.BasicBlock;
+import midend.mir.Function;
+import midend.mir.Module;
+import midend.mir.Instruction.BranchInst;
 import utils.Pair;
 
 import java.util.ArrayList;
@@ -11,8 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 
 public class FlowGraph {
-    private final HashMap<BasicBlock, List<BasicBlock>> nextBlocks = new HashMap<>();
-    private final HashMap<BasicBlock, List<BasicBlock>> prevBlocks = new HashMap<>();
+    private final HashMap<BasicBlock, ArrayList<BasicBlock>> nextBlocks = new HashMap<>();
+    private final HashMap<BasicBlock, ArrayList<BasicBlock>> prevBlocks = new HashMap<>();
 
     public static FlowGraph getFlowGraph(Module module) {
         FlowGraph flowGraph = new FlowGraph();

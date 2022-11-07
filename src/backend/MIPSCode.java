@@ -1,7 +1,7 @@
 package backend;
 
-import frontend.inodelist.INode;
-import frontend.irBuilder.Instruction.BinaryInst.BinaryOp;
+import utils.inodelist.INode;
+import midend.mir.Instruction.BinaryInst.BinaryOp;
 import backend.Registers.*;
 
 import java.util.Locale;

@@ -1,11 +1,9 @@
-package frontend.irBuilder;
+package midend.mir;
 
-import frontend.irBuilder.Instruction.*;
-import frontend.irBuilder.Type.*;
-import frontend.irBuilder.Instruction.BinaryInst.BinaryOp;
-import frontend.irBuilder.Initial.*;
+import midend.mir.Instruction.*;
+import midend.mir.Type.*;
+import midend.mir.Instruction.BinaryInst.BinaryOp;
 import frontend.token.Tokens;
-import frontend.token.Tokens.Token;
 import frontend.symbolTable.SymbolValueTable;
 
 import java.util.ArrayList;
@@ -15,6 +13,13 @@ public class IRBuilder {
      */
     private int labelCount = 0;
     private BasicBlock block;
+    /**
+     * local const : &+name - initial                           constant
+     * local var : *+name - value(type, regName, identName)    alloca
+     * func param : $+name - value(type, regName, identName)   alloca
+     * function : @+name - value(type, @+regName)           define
+     * global var : @+name - value(type, @+regName)         define
+     */
     private SymbolValueTable curTable = new SymbolValueTable(null);
 
     public IRBuilder() {}
@@ -23,29 +28,9 @@ public class IRBuilder {
 
     private String getBlockName() { return "" + (++labelCount); }
 
-    public enum IdentKind {
-        GLOBAL("@"),
-        LOCAL("*"),
-        FUNC_PARAM("$");
-        private final String prefix;
-
-        IdentKind(String prefix) { this.prefix = prefix; }
-
-        @Override
-        public String toString() {
-            return prefix;
-        }
-    }
-
-    public IdentKind getKindOfValue(String name) {
-        if (curTable.findSymbolInAll("*" + name) != null) return IdentKind.LOCAL;
-        else if (curTable.findSymbolInAll("$" + name) != null) return IdentKind.FUNC_PARAM;
-        else if (curTable.findSymbolInAll("@" + name) != null) return IdentKind.GLOBAL;
-        else return null;
-    }
-
     public Value getValueFromTable(String name) {
         Value from = curTable.findSymbolInAll("*" + name);
+        if (from == null) from = curTable.findSymbolInAll("&" + name);
         if (from == null) from = curTable.findSymbolInAll("$" + name);
         if (from == null) from = curTable.findSymbolInAll("@" + name);
         return from;
@@ -57,10 +42,18 @@ public class IRBuilder {
 
     public GlobalVariable createGlobalVar(boolean isConst, Type type, String name, Initial initial) {
         name = "@" + name;
-        Value value = isConst && type.isInt32Type() ? ((ValueInitial) initial).getValue()
-                : new Value(new PointerType(type), name);
+        Value value;
+        if (isConst) {
+            value = initial;
+        } else {
+            value = new Value(new PointerType(type), name);
+        }
         curTable.addSymbol(name, value);
         return new GlobalVariable(isConst, type, name, initial);
+    }
+
+    public void addLocalConstToTable(String name, Initial initial) {
+        curTable.addSymbol("&" + name, initial);
     }
 
     public void addFunctionToTable(LibFunction function) {
@@ -79,14 +72,13 @@ public class IRBuilder {
     public Value createFParam(String name, int dimension, Value second) {
         Value value;
         if (dimension == 0) {
-            value = new Value(IntType.INT32_TYPE, getRegName());
+            value = new Value(IntType.INT32_TYPE, getRegName(), name);
         } else if (dimension == 1) {
-            value = new Value(new PointerType(IntType.INT32_TYPE), getRegName());
+            value = new Value(new PointerType(IntType.INT32_TYPE), getRegName(), name);
         } else {
             int size = ((ConstantInt) second).getValue();
-            value = new Value(new PointerType(new ArrayType(size, IntType.INT32_TYPE)), getRegName());
+            value = new Value(new PointerType(new ArrayType(false, size, IntType.INT32_TYPE)), getRegName(), name);
         }
-        curTable.addSymbol(name, value);
         return value;
     }
 
@@ -105,9 +97,9 @@ public class IRBuilder {
         String regName = getRegName();
         AllocInst inst;
 
-        curTable.addSymbol(prefix + name, new Value(new PointerType(type), regName));
+        curTable.addSymbol(prefix + name, new Value(new PointerType(type), regName, name));
 
-        inst = new AllocInst(block, new Value(type, regName));
+        inst = new AllocInst(block, new Value(type, regName, name));
         block.addInst(inst);
         return inst;
     }

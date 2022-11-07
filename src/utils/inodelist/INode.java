@@ -1,4 +1,4 @@
-package frontend.inodelist;
+package utils.inodelist;
 
 public class INode {
     private INode prev;

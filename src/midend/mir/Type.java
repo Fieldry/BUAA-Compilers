@@ -1,4 +1,4 @@
-package frontend.irBuilder;
+package midend.mir;
 
 import java.util.ArrayList;
 
@@ -52,11 +52,13 @@ public abstract class Type {
     }
 
     public static class ArrayType extends Type {
+        private final boolean isConst;
         private final int size;
         private final Type baseType;
         private final ArrayList<Integer> dims = new ArrayList<>();
 
-        public ArrayType(int size, Type type) {
+        public ArrayType(boolean isConst, int size, Type type) {
+            this.isConst = isConst;
             this.size = size;
             baseType = type;
             dims.add(size);
@@ -64,6 +66,8 @@ public abstract class Type {
                 dims.addAll(((ArrayType) baseType).getDims());
             }
         }
+
+        public boolean isConst() { return isConst; }
 
         public int getSize() { return size; }
 

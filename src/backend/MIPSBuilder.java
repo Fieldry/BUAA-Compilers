@@ -1,23 +1,28 @@
 package backend;
 
-import frontend.irBuilder.ConstantInt;
-import frontend.irBuilder.Instruction.*;
+import java.util.ArrayList;
+
+import midend.mir.ConstantInt;
+import midend.mir.Instruction.*;
 import backend.MIPSCode.*;
 import backend.Registers.*;
-import frontend.irBuilder.Instruction.BinaryInst.BinaryOp;
-import frontend.irBuilder.Value;
+import midend.mir.Instruction.BinaryInst.BinaryOp;
+import midend.mir.Value;
 import utils.Pair;
 
 public class MIPSBuilder {
-
+    private final TempRegScheduler tempRegScheduler = new TempRegScheduler();
+    private final GlobalRegScheduler globalRegScheduler = new GlobalRegScheduler();
     private Register getRegister(Value value) {
-        return null;
+        return tempRegScheduler.find(value);
     }
+
+
 
     private MIPSCode visit(BinaryInst inst) {
         Value lValue = inst.getLValue(), rValue = inst.getRValue();
-        Object l = null, r = null;
-        Register res = Registers.getRegister();
+        Object l, r;
+        Register res = tempRegScheduler.allocReg(inst.getResValue());
         if (lValue instanceof ConstantInt) {
             l = new ImmNum(((ConstantInt) lValue).getValue());
             r = getRegister(rValue);
@@ -35,15 +40,21 @@ public class MIPSBuilder {
         }
     }
 
-    private MIPSCode visit(UnaryInst inst) {
-        return null;
-    }
-
     private MIPSCode visit(BranchInst inst) {
         if (inst.getCond() == null) {
             return new JumpCode(inst.getThenBlock().getName());
         } else {
             return new BnezCode(getRegister(inst.getCond()), new Label(inst.getThenBlock().getName()));
+        }
+    }
+
+    private MIPSCode visit(MemoryInst inst) {
+        if (inst.getFlag() == 1) {
+            /* 1 for load */
+            Register res = globalRegScheduler.find(inst.getFrom());
+            return new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.ADD), res, Register.R0, new ImmNum(1));
+        } else {
+            return null;
         }
     }
 
@@ -67,5 +78,16 @@ public class MIPSBuilder {
             }
             return new Pair<>(first, jr);
         }
+    }
+
+    private void pushArguments(ArrayList<Value> params) {
+
+    }
+
+    private MIPSCode visit(FuncCallInst inst) {
+        pushArguments(inst.getParams());
+        JumpLinkCode jal = new JumpLinkCode(inst.getFunction().getName());
+
+        return null;
     }
 }

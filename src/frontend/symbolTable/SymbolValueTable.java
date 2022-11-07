@@ -3,7 +3,7 @@ package frontend.symbolTable;
 import java.util.Map;
 import java.util.HashMap;
 
-import frontend.irBuilder.Value;
+import midend.mir.Value;
 
 public class SymbolValueTable implements SymbolTable<Value> {
     private final Map<String, Value> symbolMap = new HashMap<>();

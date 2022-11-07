@@ -1,6 +1,6 @@
-package frontend.irBuilder;
+package midend.mir;
 
-import frontend.inodelist.IList;
+import utils.inodelist.IList;
 
 public class BasicBlock extends Value {
     private final IList<Instruction> instList = new IList<>();

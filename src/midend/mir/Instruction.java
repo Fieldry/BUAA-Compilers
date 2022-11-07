@@ -1,4 +1,4 @@
-package frontend.irBuilder;
+package midend.mir;
 
 import java.util.ArrayList;
 import java.util.Locale;
@@ -76,6 +76,8 @@ public abstract class Instruction extends User {
             super(parent);
             this.value = value;
         }
+
+        public Value getValue() { return value; }
 
         @Override
         public String toString() {
@@ -214,7 +216,11 @@ public abstract class Instruction extends User {
             this.resValue = resValue;
         }
 
+        public Function getFunction() { return function; }
+
         public Value getResValue() { return resValue; }
+
+        public ArrayList<Value> getParams() { return params; }
 
         @Override
         public String toString() {
