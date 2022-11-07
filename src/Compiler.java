@@ -1,3 +1,4 @@
+import backend.MIPSBuilder;
 import midend.mir.AssemblyBuilder;
 import midend.mir.Module;
 import frontend.exception.SysYException;
@@ -16,6 +17,8 @@ public class Compiler {
     public static Parser parser;
     public static AssemblyBuilder builder;
 
+    public static MIPSBuilder mipsBuilder;
+
     public static Tokens tokens = new Tokens();
     public static Scanner scanner = new Scanner();
     public static Module module = new Module();
@@ -28,6 +31,7 @@ public class Compiler {
         reader = new Reader(input);
         writer = new Writer(output, error, llvm, mips);
         builder = new AssemblyBuilder(writer, module);
+        mipsBuilder = new MIPSBuilder(writer, module);
 
         tokenizer = new Tokenizer(tokens, reader, scanner);
         try {
@@ -62,6 +66,7 @@ public class Compiler {
          */
 
         builder.generateLLVM(compUnit);
+        mipsBuilder.genModule();
 
         writer.close();
     }

@@ -5,6 +5,7 @@ import midend.mir.Function;
 import midend.mir.Instruction;
 import midend.mir.Instruction.*;
 import midend.mir.Value;
+import utils.inodelist.INode;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,7 +19,7 @@ public class LiveAnalysis {
     private void liveUseDef(BasicBlock block) {
         if (!liveUse.containsKey(block)) liveUse.put(block, new HashSet<>());
         if (!liveDef.containsKey(block)) liveDef.put(block, new HashSet<>());
-        for (Instruction inst : block.getInstList()) {
+        for (INode inst : block.getInstList()) {
             if (inst instanceof AllocInst) {
                 liveDef.get(block).add(((AllocInst) inst).getValue());
             } else if (inst instanceof MemoryInst) {

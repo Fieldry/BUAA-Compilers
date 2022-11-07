@@ -28,7 +28,7 @@ public class MIPSCode extends INode {
         private final Register rt;
         private final ImmNum imm;
 
-        public BinaryRegImmCode(Op op, Register rs, Register rt, ImmNum imm) {
+        public BinaryRegImmCode(Op op, Register rt, Register rs, ImmNum imm) {
             this.op = op;
             this.rs = rs;
             this.rt = rt;
@@ -62,7 +62,7 @@ public class MIPSCode extends INode {
         private final Register rt;
         private final Register rd;
 
-        public BinaryRegRegCode(Op op, Register rs, Register rt, Register rd) {
+        public BinaryRegRegCode(Op op, Register rd, Register rs, Register rt) {
             this.op = op;
             this.rs = rs;
             this.rt = rt;

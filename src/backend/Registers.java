@@ -3,7 +3,6 @@ package backend;
 import midend.mir.Value;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 
 public class Registers {
@@ -21,17 +20,20 @@ public class Registers {
 
         private final String name;
 
-        Register(String name) {
-            this.name = name;
-        }
+        Register(String name) { this.name = "$" + name; }
 
         public String getName() { return name; }
+
+        @Override
+        public String toString() { return name; }
     }
 
-    private final static ArrayList<Register> globalRegisters = (ArrayList<Register>) Arrays.stream(Register.values())
-            .filter(register -> register.name.contains("s")).toList();
-    private final static ArrayList<Register> tempRegisters = (ArrayList<Register>) Arrays.stream(Register.values())
-            .filter(register -> register.name.contains("t")).toList();
+    private final static ArrayList<Register> globalRegisters = new ArrayList<>(){{
+        for (Register register : Register.values()) if (register.name.startsWith("$s")) add(register);
+    }};
+    private final static ArrayList<Register> tempRegisters = new ArrayList<>() {{
+        for (Register register : Register.values()) if (register.name.startsWith("$t")) add(register);
+    }};
     public static ArrayList<Register> getGlobalRegisters() { return globalRegisters; }
 
     public static ArrayList<Register> getTempRegisters() { return tempRegisters; }
@@ -46,17 +48,18 @@ public class Registers {
             Register r;
             if (!pool.isEmpty()) {
                 r = pool.remove(0);
-                used.add(0, r);
             } else {
                 r = overflow(value);
             }
+            used.add(0, r);
             allocated.put(r, value);
             return r;
         }
 
         public Register overflow(Value value) {
-
-            return null;
+            used.clear();
+            pool.addAll(tempRegisters);
+            return pool.remove(0);
         }
 
         public void clear() {

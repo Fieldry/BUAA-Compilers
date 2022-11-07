@@ -8,6 +8,7 @@ import midend.mir.LoopRecord.Pair;
 import midend.mir.Type.*;
 import midend.mir.Initial.*;
 import utils.Writer;
+import utils.inodelist.INode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,7 +51,7 @@ public class AssemblyBuilder {
             for (BasicBlock bBlock : function.getBBlockList()) {
                 writer.writeln("");
                 writer.writeln(";<label>:" + bBlock.getName() + ":");
-                for (Instruction inst : bBlock.getInstList()) {
+                for (INode inst : bBlock.getInstList()) {
                     writer.writeln("\t" + inst);
                 }
                 writer.writeln("\t" + bBlock.getTerminator());
