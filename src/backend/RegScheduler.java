@@ -21,6 +21,11 @@ public class RegScheduler {
         } else return null;
     }
 
+    public void clearGlobal() {
+        globalPool.clear();
+        globalPool.addAll(Registers.getGlobalRegisters());
+    }
+
     public Register allocTemp(Value value) {
         if (value instanceof ConstantInt) return Register.R1;
         Register r;

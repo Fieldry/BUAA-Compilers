@@ -93,24 +93,24 @@ public class IRBuilder {
 
     public BranchInst createBranchInst(BasicBlock target) { return new BranchInst(block, target); }
 
-    public AllocInst createAllocInst(Type type, String prefix, String name) {
+    public AllocInst createAllocInst(Type type, String prefix, String name, boolean add) {
         String regName = getRegName();
         AllocInst inst;
 
         curTable.addSymbol(prefix + name, new Value(new PointerType(type), regName, name));
 
         inst = new AllocInst(block, new Value(type, regName, name));
-        block.addInst(inst);
+        if(add) block.addInst(inst);
         return inst;
     }
 
-    public MemoryInst createStrInst(String name, Value from) {
-        return createStrInst(from, getValueFromTable(name));
+    public MemoryInst createStrInst(String name, Value from, boolean add) {
+        return createStrInst(from, getValueFromTable(name), add);
     }
 
-    public MemoryInst createStrInst(Value from, Value to) {
+    public MemoryInst createStrInst(Value from, Value to, boolean add) {
         MemoryInst inst = new MemoryInst(block, 0, from, to);
-        block.addInst(inst);
+        if(add) block.addInst(inst);
         return inst;
     }
 

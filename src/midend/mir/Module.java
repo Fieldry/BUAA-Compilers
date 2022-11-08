@@ -14,6 +14,8 @@ public class Module extends INode {
 
     public void addFunction(Function function) { functionList.addBack(function); }
 
+    public void addMainFunction(Function main) { functionList.addFront(main); }
+
     public void addGlobal(GlobalVariable global) { globalList.add(global); }
 
     public GlobalVariable getGlobal(int index) { return globalList.get(index); }

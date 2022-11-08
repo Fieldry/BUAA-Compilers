@@ -49,14 +49,22 @@ public class MIPSBuilder {
 
         writer.writeln(".text:");
         for (Function function : mirModule.getFunctionList()) {
-            curFunction = new Function(function.getType(), function.getName(), lirModule);
+            curFunction = new Function(function.getType(), function.getName().replace("@", ""), lirModule);
             lirModule.addFunction(curFunction);
             writer.writeln("Function_" + curFunction.getName() + ":");
-            if (function.getName().equals("main")) {
+
+            /* Clear used global registers. */
+            regScheduler.clearGlobal();
+
+            if (curFunction.getName().equals("main")) {
                 inMain = true;
             } else {
-                functionHelper();
+                functionHelper(function);
+                for (INode inst : curFunction.getParamFetchList()) {
+                    writer.writeln("\t" + inst);
+                }
             }
+
             for (BasicBlock block : function.getBBlockList()) {
                 curBBlock = new BasicBlock(curFunction.getName() + block.getName(), curFunction);
                 curFunction.addBBlock(curBBlock);
@@ -65,7 +73,21 @@ public class MIPSBuilder {
         }
     }
 
-    private void functionHelper() {}
+    private void functionHelper(Function function) {
+        // TODO: fetch parameters and save global registers.
+        ArrayList<Value> params = function.getParams();
+        int len = params.size(), paramSize = (len - 1) * 4;
+        for (int i = 0; i < len; i++) {
+            Value value = params.get(i);
+            Register reg = regScheduler.allocGlobal(value);
+            if (i < 4) {
+                curFunction.addParam(new MoveCode(reg, Register.valueOf(String.format("R%d", 4 + i))));
+            } else {
+                curFunction.addParam(new LoadWordCode(reg, new BaseAddress(Register.R29, new ImmNum(paramSize))));
+            }
+            paramSize -= 4;
+        }
+    }
 
     private void genBBlock(BasicBlock block) {
         writer.writeln(curBBlock.getName() + ":");
@@ -183,10 +205,11 @@ public class MIPSBuilder {
 
     private Pair<MIPSCode, MIPSCode> visit(BranchInst inst) {
         if (inst.getCond() == null) {
-            return Pair.of(new JumpCode(new Label(inst.getThenBlock().getName())), new NopCode());
+            return Pair.of(new JumpCode(new Label(curFunction.getName() + inst.getThenBlock())), new NopCode());
         } else {
-            BnezCode first = new BnezCode(allocRegForSymOrInt(inst.getCond()), new Label(inst.getThenBlock().getName()));
-            JumpCode second = new JumpCode(new Label(inst.getElseBlock().getName()));
+            BnezCode first = new BnezCode(allocRegForSymOrInt(inst.getCond()), new Label(curFunction.getName() +
+                    inst.getThenBlock().getName()));
+            JumpCode second = new JumpCode(new Label(curFunction.getName() + inst.getElseBlock().getName()));
             return Pair.of(first, second);
         }
     }
@@ -212,8 +235,8 @@ public class MIPSBuilder {
         Register reg;
         for (int i = 0, len = params.size(); i < len; i++) {
             value = params.get(i);
+            sp -= 4;
             if ((reg = regScheduler.allocParam()) == null) {
-                sp -= 4;
                 Address address = new BaseAddress(Register.R29, new ImmNum(sp));
                 memoryAddress.put(String.format("%s_param%d", name, i), address);
                 curBBlock.addMipsCode(new StoreWordCode(findRegForSymOrInt(value), address));
@@ -231,7 +254,9 @@ public class MIPSBuilder {
 
     private Pair<MIPSCode, MIPSCode> visit(FuncCallInst inst) {
         pushArguments(inst.getFunction().getName(), inst.getParams());
-        JumpLinkCode jal = new JumpLinkCode(new Label(inst.getFunction().getName()));
+        // TODO: save temp registers.
+
+        JumpLinkCode jal = new JumpLinkCode(new Label("Function_" + inst.getFunction().getName().replace("@", "")));
         if (inst.getFunction().getType().isInt32Type()) {
             return Pair.of(jal, new MoveCode(regScheduler.allocTemp(inst.getResValue()), Register.R2));
         } else return Pair.of(jal, new NopCode());

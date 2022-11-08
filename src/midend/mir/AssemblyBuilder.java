@@ -48,8 +48,11 @@ public class AssemblyBuilder {
         }
         for (Function function : module.getFunctionList()) {
             writer.write(function + "{");
+            writer.writeln("");
+            for (INode inst : function.getParamFetchList()) {
+                writer.writeln("\t" + inst);
+            }
             for (BasicBlock bBlock : function.getBBlockList()) {
-                writer.writeln("");
                 writer.writeln(";<label>:" + bBlock.getName() + ":");
                 for (INode inst : bBlock.getInstList()) {
                     writer.writeln("\t" + inst);
@@ -59,21 +62,6 @@ public class AssemblyBuilder {
             writer.writeln("}");
             writer.writeln("");
         }
-
-        /*
-        writer.writeln("define dso_local i32 @main(){");
-        writer.writeln("\tcall void @putch(i32 49)");
-        writer.writeln("\tcall void @putch(i32 57)");
-        writer.writeln("\tcall void @putch(i32 50)");
-        writer.writeln("\tcall void @putch(i32 52)");
-        writer.writeln("\tcall void @putch(i32 49)");
-        writer.writeln("\tcall void @putch(i32 48)");
-        writer.writeln("\tcall void @putch(i32 55)");
-        writer.writeln("\tcall void @putch(i32 56)");
-        writer.writeln("\tcall void @putch(i32 10)");
-        writer.writeln("\tret i32 0");
-        writer.writeln("}");
-        */
     }
 
     /*------------------------------
@@ -154,7 +142,7 @@ public class AssemblyBuilder {
         PointerType pointerType = (PointerType) pointer.getType();
         Type innerType = pointerType.getInnerType();
         if (innerType.isInt32Type()) {
-            builder.createStrInst(((ValueInitial) init).getValue(), pointer);
+            builder.createStrInst(((ValueInitial) init).getValue(), pointer,true);
         } else {
             ArrayType arrayType = (ArrayType) innerType;
             PointerType toType = new PointerType(arrayType.getBaseType());
@@ -180,6 +168,7 @@ public class AssemblyBuilder {
     public void visit(SysYFuncDef node) {
         curFunction = builder.createFunction(node.isReturnInt(), node.getName(), module);
         module.addFunction(curFunction);
+        // TODO: Add a paramFetch list.
 
         builder.createSymbolTable();
         for (SysYTree.SysYSymbol symbol : node.getFuncParams()) {
@@ -187,18 +176,19 @@ public class AssemblyBuilder {
                     ((SysYFuncParam) symbol).getDimensions(), visit(((SysYFuncParam) symbol).getSecondExp()));
             curFunction.addParam(value);
         }
+        for (int i = 0, len = node.getFuncParams().size(); i < len; i++) {
+            SysYSymbol symbol = node.getFuncParams().get(i);
+            Value value = curFunction.getParams().get(i);
+            curFunction.addParam(builder.createAllocInst(value.getType(), "$", symbol.getName(), false));
+        }
+        for (int i = 0, len = node.getFuncParams().size(); i < len; i++) {
+            SysYSymbol symbol = node.getFuncParams().get(i);
+            Value value = curFunction.getParams().get(i);
+            curFunction.addParam(builder.createStrInst(symbol.getName(), value, false));
+        }
+
         curBBlock = builder.createBlock(curFunction);
         curFunction.addBBlock(curBBlock);
-        for (int i = 0, len = node.getFuncParams().size(); i < len; i++) {
-            SysYSymbol symbol = node.getFuncParams().get(i);
-            Value value = curFunction.getParams().get(i);
-            builder.createAllocInst(value.getType(), "$", symbol.getName());
-        }
-        for (int i = 0, len = node.getFuncParams().size(); i < len; i++) {
-            SysYSymbol symbol = node.getFuncParams().get(i);
-            Value value = curFunction.getParams().get(i);
-            builder.createStrInst(symbol.getName(), value);
-        }
         visit((SysYBlock) node.getBlock());
         if (curBBlock.needTerminator()) {
             if (node.isReturnInt()) {
@@ -212,7 +202,7 @@ public class AssemblyBuilder {
 
     public void visit(SysYMainFuncDef node) {
         curFunction = builder.createFunction(true, "main", module);
-        module.addFunction(curFunction);
+        module.addMainFunction(curFunction);
         curBBlock = builder.createBlock(curFunction);
         curFunction.addBBlock(curBBlock);
 
@@ -278,7 +268,7 @@ public class AssemblyBuilder {
             if (isConst) {
                 builder.addLocalConstToTable(node.getName(), visit(init, type));
             } else {
-                builder.createAllocInst(type, "*", node.getName());
+                builder.createAllocInst(type, "*", node.getName(), true);
                 if (init != null) initLocalVar(builder.getValueFromTable(node.getName()), visit(init, type));
             }
         }
@@ -315,7 +305,7 @@ public class AssemblyBuilder {
     public void visit(SysYAssign node) {
         Value value = visit(node.getExpression());
         Value left = visit(node.getlVal(), true);
-        builder.createStrInst(value, left);
+        builder.createStrInst(value, left, true);
     }
 
     private void visitEqHelper(SysYEqExp cond, SysYStatement trueBlock, SysYStatement falseBlock) {

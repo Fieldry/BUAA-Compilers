@@ -1,10 +1,13 @@
 package midend.mir;
 
+import backend.MIPSCode;
 import utils.inodelist.IList;
+import utils.inodelist.INode;
 
 import java.util.ArrayList;
 
 public class Function extends GlobalValue {
+    private final IList<INode> paramFetchList = new IList<>();
     private final IList<BasicBlock> basicBlockList = new IList<>();
     private final ArrayList<Value> params = new ArrayList<>();
     private Module parent;
@@ -20,6 +23,8 @@ public class Function extends GlobalValue {
 
     public ArrayList<Value> getParams() { return params; }
 
+    public IList<INode> getParamFetchList() { return paramFetchList; }
+
     public String getName() { return name; }
 
     public Module getParent() { return parent; }
@@ -27,6 +32,10 @@ public class Function extends GlobalValue {
     public void addBBlock(BasicBlock block) { basicBlockList.addBack(block); }
 
     public void addParam(Value value) { params.add(value); }
+
+    public void addParam(Instruction inst) { paramFetchList.addBack(inst); }
+
+    public void addParam(MIPSCode inst) { paramFetchList.addBack(inst); }
 
     @Override
     public String toString() {

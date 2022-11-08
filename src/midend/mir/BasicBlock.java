@@ -11,10 +11,6 @@ public class BasicBlock extends Value {
     private final Function parent;
     private Instruction terminator;
 
-    public BasicBlock(String name) {
-        this.name = name;
-        this.parent = null;
-    }
     public BasicBlock(String name, Function parent) {
         this.name = name;
         this.parent = parent;
