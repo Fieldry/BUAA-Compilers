@@ -42,6 +42,8 @@ public class Value extends INode {
 
     public Type getType() { return type; }
 
+    public String getIdent() { return ident; }
+
     @Override
     public String toString() {
         return name;

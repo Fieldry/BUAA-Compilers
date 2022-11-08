@@ -76,28 +76,28 @@ public class MIPSCode extends INode {
     }
 
     public static class JumpCode extends MIPSCode {
-        private final String tag;
+        private final Label label;
 
-        public JumpCode(String tag) { this.tag = tag; }
+        public JumpCode(Label tag) { label = tag; }
 
-        public String getTag() { return tag; }
+        public Label getLabel() { return label; }
 
         @Override
         public String toString() {
-            return "j " + tag;
+            return "j " + label;
         }
     }
 
     public static class JumpLinkCode extends MIPSCode {
-        private final String tag;
+        private final Label label;
 
-        public JumpLinkCode(String tag) { this.tag = tag; }
+        public JumpLinkCode(Label tag) { label = tag; }
 
-        public String getTag() { return tag; }
+        public Label getLabel() { return label; }
 
         @Override
         public String toString() {
-            return "jal " + tag;
+            return "jal " + label;
         }
     }
 
@@ -184,7 +184,7 @@ public class MIPSCode extends INode {
         private final Register rs;
         private final Register rt;
 
-        public MoveCode(Register rs, Register rt) {
+        public MoveCode(Register rt, Register rs) {
             this.rs = rs;
             this.rt = rt;
         }

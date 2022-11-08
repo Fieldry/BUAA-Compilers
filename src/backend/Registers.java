@@ -29,76 +29,20 @@ public class Registers {
     }
 
     private final static ArrayList<Register> globalRegisters = new ArrayList<>(){{
-        for (Register register : Register.values()) if (register.name.startsWith("$s")) add(register);
+        for (Register register : Register.values())
+            if (register.name.matches("\\$s[0-7]"))
+                add(register);
+        add(Register.R26);
+        add(Register.R27);
+        add(Register.R30);
     }};
     private final static ArrayList<Register> tempRegisters = new ArrayList<>() {{
         for (Register register : Register.values()) if (register.name.startsWith("$t")) add(register);
     }};
+    private final static ArrayList<Register> paramRegisters = new ArrayList<>() {{
+        for (Register register : Register.values()) if (register.name.matches("\\$a[0-3]")) add(register);
+    }};
     public static ArrayList<Register> getGlobalRegisters() { return globalRegisters; }
-
     public static ArrayList<Register> getTempRegisters() { return tempRegisters; }
-
-    public static class TempRegScheduler {
-        private final ArrayList<Register> pool = new ArrayList<>(tempRegisters);
-        private final ArrayList<Register> used = new ArrayList<>();
-        private final HashMap<Register, Value> allocated = new HashMap<>();
-
-
-        public Register allocReg(Value value) {
-            Register r;
-            if (!pool.isEmpty()) {
-                r = pool.remove(0);
-            } else {
-                r = overflow(value);
-            }
-            used.add(0, r);
-            allocated.put(r, value);
-            return r;
-        }
-
-        public Register overflow(Value value) {
-            used.clear();
-            pool.addAll(tempRegisters);
-            return pool.remove(0);
-        }
-
-        public void clear() {
-            allocated.clear();
-            used.clear();
-            pool.addAll(tempRegisters);
-        }
-
-        public Register find(Value value) {
-            for (Register r : used) {
-                if (allocated.get(r).equals(value)) {
-                    return r;
-                }
-            }
-            return null;
-        }
-    }
-
-    public static class GlobalRegScheduler {
-        private final ArrayList<Register> pool = new ArrayList<>(globalRegisters);
-        private final ArrayList<Register> used = new ArrayList<>();
-        private final HashMap<String, Register> inReg = new HashMap<>();
-        private final HashMap<String, Address> inMem = new HashMap<>();
-
-        public void allocReg(Value value) {
-
-        }
-
-        public Register overflow(Value value) {
-
-            return null;
-        }
-
-        public void clear() {
-
-        }
-
-        public Register find(Value value) {
-            return inReg.get(value.getName());
-        }
-    }
+    public static ArrayList<Register> getParamRegisters() { return paramRegisters; }
 }

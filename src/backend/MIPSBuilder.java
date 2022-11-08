@@ -16,13 +16,22 @@ import utils.Writer;
 import utils.inodelist.INode;
 
 public class MIPSBuilder {
-    private final TempRegScheduler tempRegScheduler = new TempRegScheduler();
-    private final GlobalRegScheduler globalRegScheduler = new GlobalRegScheduler();
-
+    private final RegScheduler regScheduler = new RegScheduler();
     private final LinkedHashMap<String, Address> memoryAddress = new LinkedHashMap<>();
     private int sp = 0;
-    private Register getRegister(Value value) {
-        return tempRegScheduler.find(value);
+    private boolean inMain = false;
+    private Function curFunction;
+    private BasicBlock curBBlock;
+
+    private Register findRegForSymOrInt(Value value) {
+        Register reg = allocRegForSymOrInt(value);
+        if (value instanceof ConstantInt) {
+            curBBlock.addMipsCode(new LoadImmCode(reg, ImmNum.toImmNum(value)));
+        }
+        return reg;
+    }
+    private Register allocRegForSymOrInt(Value value) {
+        return regScheduler.allocTemp(value);
     }
 
     private final Module mirModule;
@@ -37,18 +46,29 @@ public class MIPSBuilder {
 
     public void genModule() {
         writer.setMipsBw();
+
+        writer.writeln(".text:");
         for (Function function : mirModule.getFunctionList()) {
-            Function lir = new Function();
-            for (BasicBlock block : function.getBBlockList()) {
-                lir.addBBlock(genBBlock(block));
+            curFunction = new Function(function.getType(), function.getName(), lirModule);
+            lirModule.addFunction(curFunction);
+            writer.writeln("Function_" + curFunction.getName() + ":");
+            if (function.getName().equals("main")) {
+                inMain = true;
+            } else {
+                functionHelper();
             }
-            lirModule.addFunction(function);
+            for (BasicBlock block : function.getBBlockList()) {
+                curBBlock = new BasicBlock(curFunction.getName() + block.getName(), curFunction);
+                curFunction.addBBlock(curBBlock);
+                genBBlock(block);
+            }
         }
     }
 
-    private BasicBlock genBBlock(BasicBlock block) {
-        BasicBlock lir = new BasicBlock("Label" + block.getName());
-        writer.writeln(lir.getName() + ":");
+    private void functionHelper() {}
+
+    private void genBBlock(BasicBlock block) {
+        writer.writeln(curBBlock.getName() + ":");
         Pair<MIPSCode, MIPSCode> pair;
         for (INode inst : block.getInstList()) {
             if (inst instanceof BinaryInst) {
@@ -57,11 +77,12 @@ public class MIPSBuilder {
                 pair = visit((AllocInst) inst);
             } else if (inst instanceof MemoryInst) {
                 pair = visit((MemoryInst) inst);
+            } else if (inst instanceof FuncCallInst) {
+                pair = visit((FuncCallInst) inst);
             } else {
                 pair = Pair.of(new NopCode(), new NopCode());
             }
-            lir.addMipsCode(pair);
-            writer.writeln("\t" + pair);
+            curBBlock.addMipsCode(pair);
         }
         Instruction inst = block.getTerminator();
         if (inst instanceof BranchInst) {
@@ -69,39 +90,51 @@ public class MIPSBuilder {
         } else {
             pair = visit((RetInst) inst);
         }
-        lir.addMipsCode(pair);
-        writer.writeln("\t" + pair);
-        return lir;
+        curBBlock.addMipsCode(pair);
+
+        for (INode iNode : curBBlock.getInstList()) {
+            // writer.writeln("\t" + iNode);
+            if (iNode instanceof NopCode) {
+                iNode.remove();
+            } else {
+                writer.writeln("\t" + iNode);
+            }
+        }
     }
 
     private Pair<MIPSCode, MIPSCode> visit(AllocInst inst) {
         Type type = inst.getValue().getType();
         int size = 1;
-        while (type.isArrayType()) {
+        if (type.isInt32Type()) {
+            Register reg = regScheduler.allocGlobal(inst.getValue());
+            if (reg != null) {
+                return Pair.of(new NopCode(), new NopCode());
+            }
+        } else while (type.isArrayType()) {
             size *= ((ArrayType) type).getSize();
             type = ((ArrayType) type).getBaseType();
         }
         sp -= size * 4;
-        memoryAddress.put(inst.getValue().getName(), new BaseAddress(Register.R29, new ImmNum(sp)));
+        memoryAddress.put(inst.getValue().getIdent(), new BaseAddress(Register.R29, new ImmNum(sp)));
         return Pair.of(new NopCode(), new NopCode());
     }
 
     private Pair<MIPSCode, MIPSCode> visit(BinaryInst inst) {
         Value lValue = inst.getLValue(), rValue = inst.getRValue();
         Object l, r;
-        Register res = tempRegScheduler.allocReg(inst.getResValue());
+        Register res = regScheduler.allocGlobal(inst.getResValue());
         MIPSCode code;
         if (lValue instanceof ConstantInt) {
             l = ImmNum.toImmNum(lValue);
-            r = getRegister(rValue);
+            r = allocRegForSymOrInt(rValue);
             code = new BinaryRegImmCode(BinaryRegImmCode.toOp(inst.getOp()), res, (Register) r, (ImmNum) l);
         } else if (rValue instanceof ConstantInt) {
             r = ImmNum.toImmNum(rValue);
-            l = getRegister(lValue);
+            l = allocRegForSymOrInt(lValue);
             code = new BinaryRegImmCode(BinaryRegImmCode.toOp(inst.getOp()), res, (Register) l, (ImmNum) r);
         } else {
-            l = getRegister(lValue);
-            r = getRegister(rValue);
+            l = allocRegForSymOrInt(lValue);
+            r = allocRegForSymOrInt(rValue);
             code = new BinaryRegRegCode(BinaryRegRegCode.toOp(inst.getOp()), res, (Register) l, (Register) r);
         }
         return Pair.of(code, new NopCode());
@@ -110,33 +143,50 @@ public class MIPSBuilder {
     private Pair<MIPSCode, MIPSCode> visit(MemoryInst inst) {
         if (inst.getFlag() == 1) {
             /* 1 for load */
-            Address address = memoryAddress.get(inst.getFrom().getName());
-            Register reg = tempRegScheduler.allocReg(inst.getTo());
-            return Pair.of(new LoadWordCode(reg, address), new NopCode());
+            Register from = regScheduler.find(inst.getFrom());
+            Register to = regScheduler.allocTemp(inst.getTo());
+            if (from != null) {
+                return Pair.of(new MoveCode(to, from), new NopCode());
+            } else {
+                Address address = memoryAddress.get(inst.getFrom().getIdent());
+                return Pair.of(new LoadWordCode(to, address), new NopCode());
+            }
         } else {
             /* 0 for store */
-            Address address = memoryAddress.get(inst.getTo().getName());
+            Register from;
+            Register to = regScheduler.find(inst.getTo());
+            Address address = memoryAddress.get(inst.getTo().getIdent());
             Value value = inst.getFrom();
-            Register reg;
-            MIPSCode first;
+            MIPSCode first, second;
             if (value instanceof ConstantInt) {
                 ImmNum immNum = ImmNum.toImmNum(value);
-                reg = tempRegScheduler.allocReg(value);
-                first = new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.ADD), reg, Register.R0, immNum);
+                if (to != null) {
+                    first = new LoadImmCode(to, immNum);
+                    second = new NopCode();
+                } else {
+                    from = regScheduler.allocTemp(value);
+                    first = new LoadImmCode(from, immNum);
+                    second = new StoreWordCode(from, address);
+                }
             } else {
-                reg = tempRegScheduler.find(inst.getFrom());
-                first = new NopCode();
+                from = regScheduler.find(value);
+                if (to != null) {
+                    first = new MoveCode(to, from);
+                } else {
+                    first = new StoreWordCode(from, address);
+                }
+                second = new NopCode();
             }
-            return Pair.of(first, new StoreWordCode(reg, address));
+            return Pair.of(first, second);
         }
     }
 
     private Pair<MIPSCode, MIPSCode> visit(BranchInst inst) {
         if (inst.getCond() == null) {
-            return Pair.of(new JumpCode(inst.getThenBlock().getName()), new NopCode());
+            return Pair.of(new JumpCode(new Label(inst.getThenBlock().getName())), new NopCode());
         } else {
-            BnezCode first = new BnezCode(getRegister(inst.getCond()), new Label(inst.getThenBlock().getName()));
-            JumpCode second = new JumpCode(inst.getElseBlock().getName());
+            BnezCode first = new BnezCode(allocRegForSymOrInt(inst.getCond()), new Label(inst.getThenBlock().getName()));
+            JumpCode second = new JumpCode(new Label(inst.getElseBlock().getName()));
             return Pair.of(first, second);
         }
     }
@@ -148,25 +198,42 @@ public class MIPSBuilder {
         } else {
             MIPSCode first;
             if (inst.getValue() instanceof ConstantInt)
-                first = new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.ADD),
-                        Register.R2, Register.R0, ImmNum.toImmNum(inst.getValue()));
+                first = new LoadImmCode(Register.R2, ImmNum.toImmNum(inst.getValue()));
             else {
-                Register rt = tempRegScheduler.allocReg(inst.getValue());
-                first = new BinaryRegRegCode(BinaryRegRegCode.toOp(BinaryOp.ADD),
-                        Register.R2, Register.R0, rt);
+                Register rt = regScheduler.find(inst.getValue());
+                first = new MoveCode(Register.R2, rt);
             }
             return Pair.of(first, jr);
         }
     }
 
-    private void pushArguments(ArrayList<Value> params) {
-
+    private void pushArguments(String name, ArrayList<Value> params) {
+        Value value;
+        Register reg;
+        for (int i = 0, len = params.size(); i < len; i++) {
+            value = params.get(i);
+            if ((reg = regScheduler.allocParam()) == null) {
+                sp -= 4;
+                Address address = new BaseAddress(Register.R29, new ImmNum(sp));
+                memoryAddress.put(String.format("%s_param%d", name, i), address);
+                curBBlock.addMipsCode(new StoreWordCode(findRegForSymOrInt(value), address));
+            } else {
+                if (value instanceof ConstantInt) {
+                    curBBlock.addMipsCode(new LoadImmCode(reg, ImmNum.toImmNum(value)));
+                } else {
+                    curBBlock.addMipsCode(new MoveCode(reg, regScheduler.find(value)));
+                }
+            }
+        }
+        curBBlock.addMipsCode(new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.ADD),
+                Register.R29, Register.R29, new ImmNum(sp)));
     }
 
-    private MIPSCode visit(FuncCallInst inst) {
-        pushArguments(inst.getParams());
-        JumpLinkCode jal = new JumpLinkCode(inst.getFunction().getName());
-
-        return null;
+    private Pair<MIPSCode, MIPSCode> visit(FuncCallInst inst) {
+        pushArguments(inst.getFunction().getName(), inst.getParams());
+        JumpLinkCode jal = new JumpLinkCode(new Label(inst.getFunction().getName()));
+        if (inst.getFunction().getType().isInt32Type()) {
+            return Pair.of(jal, new MoveCode(regScheduler.allocTemp(inst.getResValue()), Register.R2));
+        } else return Pair.of(jal, new NopCode());
     }
 }
