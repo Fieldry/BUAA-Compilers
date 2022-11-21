@@ -43,13 +43,22 @@ public class RegScheduler {
         return tempPool.remove(0);
     }
 
-    public Register allocParam() {
+    public Register allocParam(Value value) {
         if (!paramPool.isEmpty()) {
-            return paramPool.remove(0);
+            Register r = paramPool.remove(0);
+            map.put(value.getName(), r);
+            return r;
         } else return null;
+    }
+
+    public void clearParam() {
+        paramPool.clear();
+        paramPool.addAll(Registers.getParamRegisters());
     }
 
     public Register find(Value value) {
         return map.get(value.getName());
     }
+    public boolean used(Register register) { return map.containsValue(register); }
+    public LinkedHashMap<String, Register> getMap() { return map; }
 }

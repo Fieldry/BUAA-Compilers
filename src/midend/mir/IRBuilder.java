@@ -41,15 +41,16 @@ public class IRBuilder {
     public void recallSymbolTable() { curTable = curTable.getParent(); }
 
     public GlobalVariable createGlobalVar(boolean isConst, Type type, String name, Initial initial) {
+        String ident = name;
         name = "@" + name;
         Value value;
         if (isConst) {
             value = initial;
         } else {
-            value = new Value(new PointerType(type), name);
+            value = new Value(new PointerType(type), name, ident);
         }
         curTable.addSymbol(name, value);
-        return new GlobalVariable(isConst, type, name, initial);
+        return new GlobalVariable(isConst, type, name, ident, initial);
     }
 
     public void addLocalConstToTable(String name, Initial initial) {

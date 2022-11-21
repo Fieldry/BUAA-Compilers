@@ -12,6 +12,14 @@ public class Address {
             this.imm = imm;
         }
 
+        public static BaseAddress stackAddress(ImmNum immNum) {
+            return new BaseAddress(Register.R29, immNum);
+        }
+
+        public Register getReg() { return base; }
+
+        public ImmNum getImm() { return imm; }
+
         @Override
         public String toString() {
             return imm + "(" + base + ")";
@@ -26,6 +34,10 @@ public class Address {
             this.label = label;
             this.reg = reg;
         }
+
+        public Label getLabel() { return label; }
+
+        public Register getReg() { return reg; }
 
         @Override
         public String toString() {

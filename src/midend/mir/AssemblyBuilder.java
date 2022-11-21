@@ -168,7 +168,6 @@ public class AssemblyBuilder {
     public void visit(SysYFuncDef node) {
         curFunction = builder.createFunction(node.isReturnInt(), node.getName(), module);
         module.addFunction(curFunction);
-        // TODO: Add a paramFetch list.
 
         builder.createSymbolTable();
         for (SysYTree.SysYSymbol symbol : node.getFuncParams()) {
@@ -259,7 +258,7 @@ public class AssemblyBuilder {
             Initial initValue;
             if (init == null) {
                 // 隐式初始化为0
-                initValue = type == IntType.INT32_TYPE ? new ValueInitial(type, ConstantInt.getZero())
+                initValue = type.isInt32Type() ? new ValueInitial(type, ConstantInt.getZero())
                         : new ZeroInitial(type);
             } else initValue = visit(init, type);
             module.addGlobal(builder.createGlobalVar(node.isConst(), type, node.getName(), initValue));

@@ -4,7 +4,9 @@ import midend.mir.ConstantInt;
 import midend.mir.Value;
 
 public class ImmNum {
-    public static ImmNum Zero_Imm = new ImmNum(0);
+    public static ImmNum ZeroImm = new ImmNum(0);
+    public static ImmNum OneImm = new ImmNum(1);
+    public static ImmNum FourImm = new ImmNum(4);
 
     public static ImmNum toImmNum(Value value) {
         ConstantInt from = (ConstantInt) value;

@@ -163,20 +163,20 @@ public class MIPSCode extends INode {
 
     public static class LoadAddressCode extends MIPSCode {
         private final Register reg;
-        private final Label label;
+        private final Address address;
 
-        public LoadAddressCode(Register reg, Label label) {
+        public LoadAddressCode(Register reg, Address address) {
             this.reg = reg;
-            this.label = label;
+            this.address = address;
         }
 
         public Register getReg() { return reg; }
 
-        public Label getLabel() { return label; }
+        public Address getAddress() { return address; }
 
         @Override
         public String toString() {
-            return "la " + reg + ", " + label;
+            return "la " + reg + ", " + address;
         }
     }
 
