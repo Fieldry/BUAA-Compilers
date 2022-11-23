@@ -3,14 +3,8 @@ package backend;
 import java.util.*;
 
 import midend.mir.*;
-import midend.mir.Instruction.*;
-import backend.MIPSCode.*;
-import backend.Registers.*;
-import backend.Address.*;
-import midend.mir.Instruction.BinaryInst.BinaryOp;
 import midend.mir.Module;
-import midend.mir.Type.*;
-import utils.Pair;
+import backend.MIPSCode.*;
 import utils.Writer;
 import utils.inodelist.INode;
 
@@ -43,11 +37,26 @@ public class MIPSBuilder {
         for (Function function : mirModule.getFunctionList()) {
             isMain = function.getName().equals("@main");
             FunctionBuilder functionBuilder = new FunctionBuilder(function, isMain);
-            lirModule.addFunction(functionBuilder.firstPass(lirModule, function));
+            lirModule.addFunction(functionBuilder.firstPass(lirModule));
             functionBuilders.add(functionBuilder);
         }
         for (FunctionBuilder functionBuilder : functionBuilders) {
             functionBuilder.secondPass();
+        }
+
+        for (Function function : lirModule.getFunctionList()) {
+            writer.writeln("Function_" + function.getName() + ":");
+            for (BasicBlock block : function.getBBlockList()) {
+                writer.writeln(block + ":");
+                for (INode iNode : block.getInstList()) {
+                    if (iNode instanceof NopCode) {
+                        iNode.remove();
+                    } else {
+                        writer.writeln("\t" + iNode);
+                    }
+                }
+            }
+            writer.writeln("");
         }
     }
 }

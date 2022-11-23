@@ -28,7 +28,7 @@ public class Registers {
         public String toString() { return name; }
     }
 
-    private final static ArrayList<Register> globalRegisters = new ArrayList<>(){{
+    private final static ArrayList<Register> globalRegisters = new ArrayList<Register>(){{
         for (Register register : Register.values())
             if (register.name.matches("\\$s[0-7]"))
                 add(register);
@@ -36,10 +36,10 @@ public class Registers {
         add(Register.R27);
         add(Register.R30);
     }};
-    private final static ArrayList<Register> tempRegisters = new ArrayList<>() {{
+    private final static ArrayList<Register> tempRegisters = new ArrayList<Register>() {{
         for (Register register : Register.values()) if (register.name.startsWith("$t")) add(register);
     }};
-    private final static ArrayList<Register> paramRegisters = new ArrayList<>() {{
+    private final static ArrayList<Register> paramRegisters = new ArrayList<Register>() {{
         for (Register register : Register.values()) if (register.name.matches("\\$a[0-3]")) add(register);
     }};
     public static ArrayList<Register> getGlobalRegisters() { return globalRegisters; }

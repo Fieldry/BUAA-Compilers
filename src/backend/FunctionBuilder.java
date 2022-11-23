@@ -9,7 +9,6 @@ import midend.mir.Instruction.BinaryInst.BinaryOp;
 import midend.mir.Module;
 import midend.mir.Type.*;
 import utils.Pair;
-import utils.Writer;
 import utils.inodelist.INode;
 
 import java.util.ArrayList;
@@ -26,11 +25,14 @@ public class FunctionBuilder {
      * temp registers
      */
     private final LinkedHashMap<String, Address> stackMem = new LinkedHashMap<>();
+    /**
+     * Parse parameters.
+     */
     private final LinkedHashMap<String, Pair<Register, Address>> paramPos = new LinkedHashMap<>();
 
     private int stackSize;
-    private boolean isMain;
-    private Function mirFunction;
+    private final boolean isMain;
+    private final Function mirFunction;
     private Function curFunction;
     private BasicBlock curBBlock;
 
@@ -39,49 +41,57 @@ public class FunctionBuilder {
         this.isMain = isMain;
     }
 
-    private Register findRegForSymOrInt(Value value) {
+    private Register findRegForSym(Value value) {
         Register reg = null;
         /* param */
         if (paramPos.containsKey(value.getName())) reg = paramPos.get(value.getName()).getFirst();
         /* global or temp register */
-        if (reg == null) reg = regScheduler.find(value);
-        if (reg == null) reg = allocRegForSymOrInt(value);
+        if (reg == null) return regScheduler.find(value);
+        else return reg;
+    }
+    private Register allocRegForSymOrInt(Value value) {
+        Register reg = regScheduler.allocTemp(value);
         if (value instanceof ConstantInt) {
             curBBlock.addMipsCode(new LoadImmCode(reg, ImmNum.toImmNum(value)));
+        } else if (findAddress(value) != null) {
+            curBBlock.addMipsCode(new LoadWordCode(reg, findAddress(value)));
         }
         return reg;
     }
-    private Register allocRegForSymOrInt(Value value) {
-        return regScheduler.allocTemp(value);
+    private Register findOrAllocReg(Value value) {
+        Register reg;
+        if ((reg = findRegForSym(value)) != null) return reg;
+        else return allocRegForSymOrInt(value);
     }
     private Address findAddress(Value value) {
         String name = value.getName();
-        if (paramPos.containsKey(name)) return paramPos.get(name).getSecond();
+        if (paramPos.containsKey(name) && paramPos.get(name).getSecond() != null) return paramPos.get(name).getSecond();
         else if (stackMem.containsKey(name)) return stackMem.get(name);
         else return globalMem.getOrDefault(name, null);
     }
 
-    public Function firstPass(Module lirModule, Function function) {
-        curFunction = new Function(function.getType(), function.getName().replace("@", ""), lirModule);
+    public Function firstPass(Module lirModule) {
+        curFunction = new Function(mirFunction.getType(), mirFunction.getName().replace("@", ""), lirModule);
         HashMap<String, Integer> map = new HashMap<>();
         int total;
         /* params */
         if (isMain) total = 0;
-        else total = Math.max(0, function.getParams().size() - 4) * 4;
+        else total = Math.max(0, mirFunction.getParams().size() - 4) * 4;
 
         /* local var */
-        for (BasicBlock block : function.getBBlockList()) {
+        for (BasicBlock block : mirFunction.getBBlockList()) {
             for (INode inst : block.getInstList()) {
-                if (inst instanceof Instruction.AllocInst) {
-                    int size = visit((Instruction.AllocInst) inst);
+                if (inst instanceof AllocInst) {
+                    int size = visit((AllocInst) inst);
                     if (size != 0) {
                         total += size;
                         map.put(((AllocInst) inst).getValue().getName(), size);
                     }
                 } else if (inst instanceof FuncCallInst) {
                     ArrayList<Value> params = ((FuncCallInst) inst).getParams();
-                    Value value;
                     Register reg;
+                    Value value;
+                    String name = ((FuncCallInst) inst).getFunction().getName().replace("@", "");
                     int pos = 0;
                     regScheduler.clearParam();
                     for (int i = 0, len = params.size(); i < len; i++) {
@@ -90,9 +100,9 @@ public class FunctionBuilder {
                         if (reg == null) {
                             pos -= 4;
                             Address address = new BaseAddress(Register.R29, new ImmNum(pos));
-                            paramPos.put(value.getName(), Pair.of(null, address));
+                            paramPos.put(name + "_param" + i, Pair.of(null, address));
                         } else {
-                            paramPos.put(value.getName(), Pair.of(reg, null));
+                            paramPos.put(name + "_param" + i, Pair.of(reg, null));
                         }
                     }
                 }
@@ -100,9 +110,16 @@ public class FunctionBuilder {
         }
 
         /* temp registers */
-        total += Registers.getTempRegisters().size() * 4;
+        // total += Registers.getTempRegisters().size() * 4;
+        /* ra register */
+        total += 4;
 
         stackSize = total;
+
+        for (int i = 4, len = mirFunction.getParams().size(); i < len; i++) {
+            total -= 4;
+            stackMem.put(curFunction.getName() + "_param" + i, new BaseAddress(Register.R29, new ImmNum(total)));
+        }
         for (Map.Entry<String, Integer> entry : map.entrySet()) {
             String name = entry.getKey();
             Integer size = entry.getValue();
@@ -114,7 +131,7 @@ public class FunctionBuilder {
 
     private int visit(AllocInst inst) {
         Type type = inst.getValue().getType();
-        int size = 1;
+        int size = 4;
         if (type.isInt32Type()) {
             Register reg = regScheduler.allocGlobal(inst.getValue());
             if (reg != null) {
@@ -128,9 +145,23 @@ public class FunctionBuilder {
     }
 
     public void secondPass() {
+        regScheduler.clearParam();
+        for (INode inst : mirFunction.getParamFetchList()) {
+            if (inst instanceof MemoryInst) {
+                String from = ((MemoryInst) inst).getFrom().getName().replace("%", "");
+                Value to = ((MemoryInst) inst).getTo();
+                Register reg = regScheduler.allocParam(to);
+                if (reg == null) stackMem.put(to.getName(), stackMem.get(from));
+            }
+        }
         for (BasicBlock block : mirFunction.getBBlockList()) {
             curBBlock = new BasicBlock(curFunction.getName() + block.getName(), curFunction);
             curFunction.addBBlock(curBBlock);
+            if (mirFunction.getBBlockList().getBegin().equals(block) && stackSize > 0) {
+                curBBlock.addMipsCode(new BinaryRegImmCode(
+                        BinaryRegImmCode.toOp(BinaryOp.SUB), Register.R29, Register.R29, new ImmNum(stackSize)
+                ));
+            }
             genBBlock(block);
         }
     }
@@ -151,6 +182,13 @@ public class FunctionBuilder {
             }
             curBBlock.addMipsCode(pair);
         }
+
+        if (mirFunction.getBBlockList().getEnd().equals(block) && stackSize > 0 && !isMain) {
+            curBBlock.addMipsCode(new BinaryRegImmCode(
+                    BinaryRegImmCode.toOp(BinaryOp.ADD), Register.R29, Register.R29, new ImmNum(stackSize)
+            ));
+        }
+
         Instruction inst = block.getTerminator();
         if (inst instanceof BranchInst) {
             pair = visit((BranchInst) inst);
@@ -167,15 +205,15 @@ public class FunctionBuilder {
         MIPSCode code;
         if (lValue instanceof ConstantInt) {
             l = ImmNum.toImmNum(lValue);
-            r = allocRegForSymOrInt(rValue);
+            r = findOrAllocReg(rValue);
             code = new BinaryRegImmCode(BinaryRegImmCode.toOp(inst.getOp()), res, (Register) r, (ImmNum) l);
         } else if (rValue instanceof ConstantInt) {
             r = ImmNum.toImmNum(rValue);
-            l = allocRegForSymOrInt(lValue);
+            l = findOrAllocReg(lValue);
             code = new BinaryRegImmCode(BinaryRegImmCode.toOp(inst.getOp()), res, (Register) l, (ImmNum) r);
         } else {
-            l = allocRegForSymOrInt(lValue);
-            r = allocRegForSymOrInt(rValue);
+            l = findOrAllocReg(lValue);
+            r = findOrAllocReg(rValue);
             code = new BinaryRegRegCode(BinaryRegRegCode.toOp(inst.getOp()), res, (Register) l, (Register) r);
         }
         return Pair.of(code, new NopCode());
@@ -184,8 +222,9 @@ public class FunctionBuilder {
     private Pair<MIPSCode, MIPSCode> visit(MemoryInst inst) {
         if (inst.getFlag() == 1) {
             /* 1 for load */
-            Register from = findRegForSymOrInt(inst.getFrom());
-            Register to = allocRegForSymOrInt(inst.getTo());
+            Register from = findRegForSym(inst.getFrom());
+            Register to = findRegForSym(inst.getTo());
+            assert to != null;
             if (from != null) {
                 return Pair.of(new MoveCode(to, from), new NopCode());
             } else {
@@ -195,7 +234,7 @@ public class FunctionBuilder {
         } else {
             /* 0 for store */
             Register from;
-            Register to = findRegForSymOrInt(inst.getTo());
+            Register to = findRegForSym(inst.getTo());
             Address address = findAddress(inst.getTo());
             Value value = inst.getFrom();
             MIPSCode first, second;
@@ -206,11 +245,11 @@ public class FunctionBuilder {
                     second = new NopCode();
                 } else {
                     from = allocRegForSymOrInt(value);
-                    first = new LoadImmCode(from, immNum);
+                    first = new NopCode();
                     second = new StoreWordCode(from, address);
                 }
             } else {
-                from = findRegForSymOrInt(value);
+                from = findRegForSym(value);
                 if (to != null) {
                     first = new MoveCode(to, from);
                 } else {
@@ -226,7 +265,7 @@ public class FunctionBuilder {
         if (inst.getCond() == null) {
             return Pair.of(new JumpCode(new Label(curFunction.getName() + inst.getThenBlock())), new NopCode());
         } else {
-            BnezCode first = new BnezCode(allocRegForSymOrInt(inst.getCond()), new Label(curFunction.getName() +
+            BnezCode first = new BnezCode(findRegForSym(inst.getCond()), new Label(curFunction.getName() +
                     inst.getThenBlock().getName()));
             JumpCode second = new JumpCode(new Label(curFunction.getName() + inst.getElseBlock().getName()));
             return Pair.of(first, second);
@@ -234,18 +273,19 @@ public class FunctionBuilder {
     }
 
     private Pair<MIPSCode, MIPSCode> visit(RetInst inst) {
-        JumpRegCode jr = new JumpRegCode(Register.R31);
-        if (inst.getType().isVoidType()) {
-            return Pair.of(new NopCode(), jr);
+        if (isMain) {
+            return Pair.of(new LoadImmCode(Register.R2, new ImmNum(10)), new SysCallCode());
+        } else if (inst.getType().isVoidType()) {
+            return Pair.of(new NopCode(), new JumpRegCode(Register.R31));
         } else {
             MIPSCode first;
             if (inst.getValue() instanceof ConstantInt)
                 first = new LoadImmCode(Register.R2, ImmNum.toImmNum(inst.getValue()));
             else {
-                Register rt = findRegForSymOrInt(inst.getValue());
+                Register rt = findRegForSym(inst.getValue());
                 first = new MoveCode(Register.R2, rt);
             }
-            return Pair.of(first, jr);
+            return Pair.of(first, new JumpRegCode(Register.R31));
         }
     }
 
@@ -266,7 +306,7 @@ public class FunctionBuilder {
                 if (index instanceof ConstantInt) {
                     size = ((ConstantInt) index).getValue() * ((ArrayType) innerType).getSize();
                 } else {
-                    reg = findRegForSymOrInt(index);
+                    reg = findRegForSym(index);
                     curBBlock.addMipsCode(new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.MUL),
                             reg, reg, new ImmNum(((ArrayType) innerType).getSize())));
                 }
@@ -274,7 +314,7 @@ public class FunctionBuilder {
                 if (index instanceof ConstantInt) {
                     size =  ((ConstantInt) index).getValue();
                 } else {
-                    reg = findRegForSymOrInt(index);
+                    reg = findRegForSym(index);
                 }
             }
 
@@ -300,16 +340,53 @@ public class FunctionBuilder {
         return Pair.of(new NopCode(), new NopCode());
     }
 
-    private Pair<MIPSCode, MIPSCode> visit(FuncCallInst inst) {
-        // TODO: Save temp registers.
-        // save(SAVE_TEMP);
+    private Pair<MIPSCode, MIPSCode> libFuncHelper(LibFunction function) {
 
+        return Pair.of(new NopCode(), new NopCode());
+    }
+
+    private Pair<MIPSCode, MIPSCode> visit(FuncCallInst inst) {
+        // TODO: Save temp registers and ra.
+        // save(SAVE_TEMP);
+        if (!isMain)
+            curBBlock.addMipsCode(new StoreWordCode(Register.R31, new BaseAddress(Register.R29, ImmNum.ZeroImm)));
+
+        if (inst.getFunction() instanceof LibFunction) {
+            return libFuncHelper((LibFunction) inst.getFunction());
+        }
+
+        /* Parse imm. */
+        ArrayList<Value> params = inst.getParams();
+        Register reg;
+        Value value;
+        Address address;
+        Pair<Register, Address> pair;
+        String name = inst.getFunction().getName().replace("@", "");
+        for (int i = 0, len = params.size(); i < len; i++) {
+            value = params.get(i);
+            if (value instanceof ConstantInt) {
+                pair = paramPos.get(name + "_param" + i);
+                if ((reg = pair.getFirst()) != null) {
+                    curBBlock.addMipsCode(new LoadImmCode(reg, ImmNum.toImmNum(value)));
+                } else {
+                    address = pair.getSecond();
+                    reg = findRegForSym(value);
+                    curBBlock.addMipsCode(new StoreWordCode(reg, address));
+                }
+            }
+        }
+
+        Pair<MIPSCode, MIPSCode> codes;
         JumpLinkCode jal = new JumpLinkCode(
                 new Label("Function_" + inst.getFunction().getName().replace("@", "")));
         if (inst.getFunction().getType().isInt32Type()) {
-            return Pair.of(jal, new MoveCode(allocRegForSymOrInt(inst.getResValue()), Register.R2));
-        } else return Pair.of(jal, new NopCode());
+            codes = Pair.of(jal, new MoveCode(findRegForSym(inst.getResValue()), Register.R2));
+        } else codes = Pair.of(jal, new NopCode());
 
-        // TODO: Restore temp registers.
+        // TODO: Restore temp registers and ra.
+        if(!isMain)
+            curBBlock.addMipsCode(new LoadWordCode(Register.R31, new BaseAddress(Register.R29, ImmNum.ZeroImm)));
+
+        return codes;
     }
 }

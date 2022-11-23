@@ -9,7 +9,7 @@ import midend.mir.Value;
 
 public class RegScheduler {
     private final ArrayList<Register> tempPool = new ArrayList<>(Registers.getTempRegisters());
-    private final ArrayList<Register> globalPool = new ArrayList<>(Registers.getGlobalRegisters());
+    private static final ArrayList<Register> globalPool = new ArrayList<>(Registers.getGlobalRegisters());
     private final ArrayList<Register> paramPool = new ArrayList<>(Registers.getParamRegisters());
     private final LinkedHashMap<String, Register> map = new LinkedHashMap<>();
 
@@ -57,6 +57,7 @@ public class RegScheduler {
     }
 
     public Register find(Value value) {
+        if (value.getName() == null) return null;
         return map.get(value.getName());
     }
     public boolean used(Register register) { return map.containsValue(register); }
