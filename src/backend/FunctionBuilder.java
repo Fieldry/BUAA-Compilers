@@ -371,24 +371,30 @@ public class FunctionBuilder {
 
     private boolean libFuncHelper(FuncCallInst inst) {
         Function function = inst.getFunction();
-        if (function.getName().equals("@getint")) {
-            Register reg = findOrAllocReg(inst.getResValue());
-            curBBlock.addMipsCode(new LoadImmCode(Register.R2, ImmNum.GETINT));
-            curBBlock.addMipsCode(new SysCallCode());
-            curBBlock.addMipsCode(new MoveCode(reg, Register.R2));
-            return true;
-        } else if (function.getName().equals("@putch")) {
-            curBBlock.addMipsCode(new LoadImmCode(Register.R2, ImmNum.PUTCHAR));
-            curBBlock.addMipsCode(new LoadImmCode(Register.R4, ImmNum.toImmNum(inst.getParams().get(0))));
-            curBBlock.addMipsCode(new SysCallCode());
-            return true;
-        } else if (function.getName().equals("@putint")) {
-            curBBlock.addMipsCode(new LoadImmCode(Register.R2, ImmNum.PUTINT));
-            Register reg = getRegForRight(inst.getParams().get(0));
-            curBBlock.addMipsCode(new MoveCode(Register.R4, reg));
-            curBBlock.addMipsCode(new SysCallCode());
-            return true;
-        } else return false;
+        switch (function.getName()) {
+            case "@getint": {
+                Register reg = findOrAllocReg(inst.getResValue());
+                curBBlock.addMipsCode(new LoadImmCode(Register.R2, ImmNum.GETINT));
+                curBBlock.addMipsCode(new SysCallCode());
+                curBBlock.addMipsCode(new MoveCode(reg, Register.R2));
+                return true;
+            }
+            case "@putch": {
+                curBBlock.addMipsCode(new LoadImmCode(Register.R2, ImmNum.PUTCHAR));
+                curBBlock.addMipsCode(new LoadImmCode(Register.R4, ImmNum.toImmNum(inst.getParams().get(0))));
+                curBBlock.addMipsCode(new SysCallCode());
+                return true;
+            }
+            case "@putint": {
+                curBBlock.addMipsCode(new LoadImmCode(Register.R2, ImmNum.PUTINT));
+                Register reg = getRegForRight(inst.getParams().get(0));
+                curBBlock.addMipsCode(new MoveCode(Register.R4, reg));
+                curBBlock.addMipsCode(new SysCallCode());
+                return true;
+            }
+            default:
+                return false;
+        }
     }
     private void save() {
         int pos = 0;
