@@ -37,7 +37,7 @@ public class Registers {
         add(Register.R30);
     }};
     private final static ArrayList<Register> tempRegisters = new ArrayList<Register>() {{
-        for (Register register : Register.values()) if (register.name.startsWith("$t")) add(register);
+        for (Register register : Register.values()) if (register.name.matches("\\$t[1-9]")) add(register);
     }};
     private final static ArrayList<Register> paramRegisters = new ArrayList<Register>() {{
         for (Register register : Register.values()) if (register.name.matches("\\$a[0-3]")) add(register);

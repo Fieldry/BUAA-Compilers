@@ -9,32 +9,32 @@ import midend.mir.Value;
 
 public class RegScheduler {
     private final ArrayList<Register> tempPool = new ArrayList<>(Registers.getTempRegisters());
-    private static final ArrayList<Register> globalPool = new ArrayList<>(Registers.getGlobalRegisters());
-    private final ArrayList<Register> paramPool = new ArrayList<>(Registers.getParamRegisters());
-    private final LinkedHashMap<String, Register> map = new LinkedHashMap<>();
+    private final ArrayList<Register> globalPool = new ArrayList<>(Registers.getGlobalRegisters());
+    // private final ArrayList<Register> paramPool = new ArrayList<>(Registers.getParamRegisters());
+    private final LinkedHashMap<String, Register> tempMap = new LinkedHashMap<>();
+    private final LinkedHashMap<String, Register> globalMap = new LinkedHashMap<>();
 
     public Register allocGlobal(Value value) {
         if (!globalPool.isEmpty()) {
             Register r = globalPool.remove(0);
-            map.put(value.getName(), r);
+            globalMap.put(value.getName(), r);
             return r;
         } else return null;
     }
 
-    public void clearGlobal() {
-        globalPool.clear();
-        globalPool.addAll(Registers.getGlobalRegisters());
+    public boolean usedGlobal(Register register) {
+        return globalMap.containsValue(register);
     }
 
     public Register allocTemp(Value value) {
-        if (value instanceof ConstantInt) return Register.R1;
+        if (value instanceof ConstantInt) return Register.R8;
         Register r;
         if (!tempPool.isEmpty()) {
             r = tempPool.remove(0);
         } else {
             r = overflowTemp(value);
         }
-        map.put(value.getName(), r);
+        tempMap.put(value.getName(), r);
         return r;
     }
 
@@ -43,23 +43,22 @@ public class RegScheduler {
         return tempPool.remove(0);
     }
 
-    public Register allocParam(Value value) {
-        if (!paramPool.isEmpty()) {
-            Register r = paramPool.remove(0);
-            map.put(value.getName(), r);
-            return r;
-        } else return null;
-    }
-
-    public void clearParam() {
-        paramPool.clear();
-        paramPool.addAll(Registers.getParamRegisters());
-    }
+//    public Register allocParam(Value value) {
+//        if (!paramPool.isEmpty()) {
+//            Register r = paramPool.remove(0);
+//            map.put(value.getName(), r);
+//            return r;
+//        } else return null;
+//    }
+//
+//    public void clearParam() {
+//        paramPool.clear();
+//        paramPool.addAll(Registers.getParamRegisters());
+//    }
 
     public Register find(Value value) {
         if (value.getName() == null) return null;
-        return map.get(value.getName());
+        if (globalMap.containsKey(value.getName())) return globalMap.get(value.getName());
+        else return tempMap.get(value.getName());
     }
-    public boolean used(Register register) { return map.containsValue(register); }
-    public LinkedHashMap<String, Register> getMap() { return map; }
 }
