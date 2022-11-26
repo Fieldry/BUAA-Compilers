@@ -71,7 +71,14 @@ public class Writer {
 
     public void setLlvmBw() { bw = llvmBw; }
 
-    public void setMipsBw() { bw = mipsBw; }
+    public void setMipsBw() {
+        bw = mipsBw;
+        try {
+            llvmBw.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     public void setStdOut() { bw = new BufferedWriter(new PrintWriter(System.out)); }
 

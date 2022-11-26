@@ -14,7 +14,7 @@ public abstract class Initial extends Value {
 
     public Type getType() { return type; }
 
-    public abstract String toMIPS();
+    public abstract String toMIPS(boolean needPrefix);
 
     public static class ValueInitial extends Initial {
         private final Value value;
@@ -34,8 +34,11 @@ public abstract class Initial extends Value {
         }
 
         @Override
-        public String toMIPS() {
-            return ".word " + toString();
+        public String toMIPS(boolean needPrefix) {
+            if (needPrefix)
+                return ".word " + this;
+            else
+                return toString();
         }
     }
 
@@ -59,8 +62,12 @@ public abstract class Initial extends Value {
                     .reduce((x, y) -> x + ", " + y).orElse("") + "]";
         }
 
-        public String toMIPS() {
-            return ".word " + initValues.stream().map(Initial::toMIPS).reduce((x, y) -> x + ", " + y).orElse("");
+        public String toMIPS(boolean needPrefix) {
+//            for (Initial initial : initValues) {
+//                System.out.println(initial.toMIPS(true));
+//            }
+            String prefix = needPrefix ? ".word " : "";
+            return prefix + initValues.stream().map(initial -> initial.toMIPS(false)).reduce((x, y) -> x + ", " + y).orElse("");
         }
     }
 
@@ -73,10 +80,11 @@ public abstract class Initial extends Value {
         }
 
         @Override
-        public String toMIPS() {
+        public String toMIPS(boolean needPrefix) {
             int size = 1;
             for (Integer i : ((ArrayType) type).getDims()) size *= i;
-            return ".space " + size;
+            if (needPrefix) return ".space " + size;
+            else return "" + size;
         }
     }
 }

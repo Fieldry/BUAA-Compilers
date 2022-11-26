@@ -27,7 +27,6 @@ public class RegScheduler {
     }
 
     public Register allocTemp(Value value) {
-        if (value instanceof ConstantInt) return Register.R8;
         Register r;
         if (!tempPool.isEmpty()) {
             r = tempPool.remove(0);

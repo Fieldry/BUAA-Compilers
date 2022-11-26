@@ -27,10 +27,12 @@ public class MIPSBuilder {
         writer.setMipsBw();
         writer.writeln(".data:");
         for (GlobalVariable value : mirModule.getGlobalList()) {
-            String name = value.getName().replace("@", "");
-            writer.write("\t" + name);
-            writer.writeln(": " + value.getInitValue().toMIPS());
-            globalMem.put(value.getName(), new LabelAddress(new Label(name), Registers.Register.R0));
+            if (!value.isConst()) {
+                String name = value.getName().replace("@", "");
+                writer.write("\t" + name);
+                writer.writeln(": " + value.getInitValue().toMIPS(true));
+                globalMem.put(value.getName(), new LabelAddress(new Label(name), Registers.Register.R0));
+            }
         }
 
         writer.writeln("");
