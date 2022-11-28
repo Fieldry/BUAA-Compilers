@@ -357,7 +357,7 @@ public class FunctionBuilder {
             curBBlock.addMipsCode(new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.MUL),
                     reg, reg, ImmNum.FourImm));
         }
-        System.out.println(inst + " : " + address);
+        // System.out.println(inst + " : " + address);
         if (address instanceof BaseAddress) {
             /* local array */
 //                if (index instanceof ConstantInt) {
@@ -378,11 +378,31 @@ public class FunctionBuilder {
             newAddress = new LabelAddress(((LabelAddress) address).getLabel(), reg);
         } else {
             assert address == null;
-            newAddress = new BaseAddress(getRegForRight(from), ImmNum.ZeroImm);
+            Register temp = getRegForRight(from);
+            curBBlock.addMipsCode(
+                    new BinaryRegRegCode(BinaryRegRegCode.toOp(BinaryOp.ADD), temp,
+                            temp, reg));
+            newAddress = new BaseAddress(temp, ImmNum.ZeroImm);
         }
         stackMem.put(to.getName(), newAddress);
+        if (paramPos.containsKey(to.getName())) storeAddress(newAddress, to);
 
         return Pair.of(new NopCode(), new NopCode());
+    }
+
+    private void storeAddress(Address addr, Value value) {
+        Address address = paramPos.get(value.getName()).getSecond();
+        if (addr instanceof BaseAddress) {
+            Register reg = ((BaseAddress) addr).getReg();
+            ImmNum imm = ((BaseAddress) addr).getImm();
+            curBBlock.addMipsCode(new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.ADD), reg,
+                    reg, imm));
+            curBBlock.addMipsCode(new StoreWordCode(reg, address));
+        } else {
+            Register temp = regScheduler.allocTemp();
+            curBBlock.addMipsCode(new LoadAddressCode(temp, addr));
+            curBBlock.addMipsCode(new StoreWordCode(temp, address));
+        }
     }
 
     private boolean libFuncHelper(FuncCallInst inst) {

@@ -28,6 +28,7 @@ public class AssemblyBuilder {
      */
     private BasicBlock curBBlock;
     private boolean inGlobal;
+    private GEPInst secondGet = null;
 
     public AssemblyBuilder(Writer writer, Module module) {
         this.writer = writer;
@@ -147,9 +148,31 @@ public class AssemblyBuilder {
             ArrayType arrayType = (ArrayType) innerType;
             PointerType toType = new PointerType(arrayType.getBaseType());
             ArrayInitial arrayInitial = (ArrayInitial) init;
-            for (int i = 0, len = arrayType.getSize(); i < len; i++)
-                initLocalVar(builder.createGEPInst(pointer, toType, new ConstantInt(i), true).getTo(),
-                        arrayInitial.getInitValues().get(i));
+            /* new */
+            int first = arrayType.getSize();
+            if (arrayType.getBaseType().isArrayType()) {
+                ArrayType arrayType1 =(ArrayType) arrayType.getBaseType();
+                PointerType toType2 = new PointerType(arrayType1.getBaseType());
+                int second = arrayType1.getSize();
+                for (int i = 0; i < first; i++) {
+                    ArrayInitial arrayInitial1 = (ArrayInitial) arrayInitial.getInitValues().get(i);
+                    Initial temp;
+                    Value pointer1;
+                    for (int j = 0; j < second; j++) {
+                        pointer1 = builder.createGEPInst(pointer, toType, new ConstantInt(i), true).getTo();
+                        temp = arrayInitial1.getInitValues().get(j);
+                        initLocalVar(
+                                builder.createGEPInst(pointer1, toType2, new ConstantInt(j), true).getTo(), temp);
+                    }
+                }
+            }
+            /* end */
+            else {
+                for (int i = 0; i < first; i++) {
+                    initLocalVar(builder.createGEPInst(pointer, toType, new ConstantInt(i), true).getTo(),
+                            arrayInitial.getInitValues().get(i));
+                }
+            }
         }
     }
 
@@ -459,7 +482,13 @@ public class AssemblyBuilder {
     public Value visit(SysYFuncCall node) {
         ArrayList<Value> params = new ArrayList<>();
         for (SysYExpression exp : node.getFuncRParams()) {
-            params.add(visit(exp));
+            if (exp.isFuncCall())
+                params.add(visit(exp));
+        }
+        for (int i = 0, len = node.getFuncRParams().size(); i < len; i++) {
+            SysYExpression exp = node.getFuncRParams().get(i);
+            if (!exp.isFuncCall())
+                params.add(i, visit(exp));
         }
         return builder.createFuncCallInst(node.getName(), params).getResValue();
     }
@@ -511,6 +540,8 @@ public class AssemblyBuilder {
     }
 
     public Value visit(SysYLVal node, boolean needPointer) {
+        if (node.getName().equals("qq"))
+            System.out.println("break");
         Value pointer = builder.getValueFromTable(node.getName());
         ArrayList<Value> indexes = new ArrayList<>();
         if (node.getFirstExp() != null) {

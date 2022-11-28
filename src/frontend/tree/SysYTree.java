@@ -473,7 +473,10 @@ public abstract class SysYTree {
             TWO_DIM
         }
 
+        protected boolean isFuncCall = false;
+
         public abstract ReturnKind getReturnKind(SymbolSysYTable table) throws SysYException;
+        public boolean isFuncCall() { return isFuncCall; }
     }
 
     public static class SysYExpressionStatement extends SysYExpression {
@@ -655,6 +658,7 @@ public abstract class SysYTree {
         public SysYFuncCall(SysYIdentifier ident, List<SysYExpression> funcParams) {
             this.ident = ident;
             this.funcRParams = funcParams == null ? new ArrayList<>() : funcParams;
+            this.isFuncCall = true;
         }
 
         public String getName() {
@@ -735,6 +739,7 @@ public abstract class SysYTree {
         public SysYUnaryExp(Token unaryOp, SysYExpression unaryExp) {
             this.unaryOp = unaryOp;
             this.unaryExp = unaryExp;
+            this.isFuncCall = unaryExp.isFuncCall;
         }
 
         public Token getUnaryOp() { return unaryOp; }
@@ -760,12 +765,16 @@ public abstract class SysYTree {
         protected SysYExpression rightExp;
         protected Token token;
 
-        public SysYBinaryExp(SysYExpression leftExp) { this.leftExp = leftExp; }
+        public SysYBinaryExp(SysYExpression leftExp) {
+            this.leftExp = leftExp;
+            this.isFuncCall = leftExp.isFuncCall;
+        }
 
         public SysYBinaryExp(Token token, SysYExpression leftExp, SysYExpression rightExp) {
             this.leftExp = leftExp;
             this.rightExp = rightExp;
             this.token = token;
+            this.isFuncCall = leftExp.isFuncCall | rightExp.isFuncCall;
         }
 
         public Token getToken() {

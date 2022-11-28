@@ -37,6 +37,16 @@ public class RegScheduler {
         return r;
     }
 
+    public Register allocTemp() {
+        Register r;
+        if (!tempPool.isEmpty()) {
+            r = tempPool.remove(0);
+        } else {
+            r = overflowTemp(null);
+        }
+        return r;
+    }
+
     public Register overflowTemp(Value value) {
         tempPool.addAll(Registers.getTempRegisters());
         return tempPool.remove(0);
