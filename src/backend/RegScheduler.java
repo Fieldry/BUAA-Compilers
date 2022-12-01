@@ -2,28 +2,28 @@ package backend;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 import backend.Registers.Register;
-import midend.mir.ConstantInt;
 import midend.mir.Value;
 
 public class RegScheduler {
     private final ArrayList<Register> tempPool = new ArrayList<>(Registers.getTempRegisters());
     private final ArrayList<Register> globalPool = new ArrayList<>(Registers.getGlobalRegisters());
     // private final ArrayList<Register> paramPool = new ArrayList<>(Registers.getParamRegisters());
-    private final LinkedHashMap<String, Register> tempMap = new LinkedHashMap<>();
-    private final LinkedHashMap<String, Register> globalMap = new LinkedHashMap<>();
+    private final LinkedHashMap<Register, String> tempMap = new LinkedHashMap<>();
+    private final LinkedHashMap<Register, String> globalMap = new LinkedHashMap<>();
 
     public Register allocGlobal(Value value) {
         if (!globalPool.isEmpty()) {
             Register r = globalPool.remove(0);
-            globalMap.put(value.getName(), r);
+            globalMap.put(r, value.getName());
             return r;
         } else return null;
     }
 
     public boolean usedGlobal(Register register) {
-        return globalMap.containsValue(register);
+        return globalMap.containsKey(register);
     }
 
     public Register allocTemp(Value value) {
@@ -33,7 +33,7 @@ public class RegScheduler {
         } else {
             r = overflowTemp(value);
         }
-        tempMap.put(value.getName(), r);
+        tempMap.put(r, value.getName());
         return r;
     }
 
@@ -44,6 +44,7 @@ public class RegScheduler {
         } else {
             r = overflowTemp(null);
         }
+        tempMap.put(r, null);
         return r;
     }
 
@@ -67,7 +68,25 @@ public class RegScheduler {
 
     public Register find(Value value) {
         if (value.getName() == null) return null;
-        if (globalMap.containsKey(value.getName())) return globalMap.get(value.getName());
-        else return tempMap.get(value.getName());
+        Register reg;
+        for (Map.Entry<Register, String> entry : globalMap.entrySet()) {
+            if (entry.getValue() != null && entry.getValue().equals(value.getName())) {
+                reg = entry.getKey();
+                // globalPool.add(Math.max(globalPool.size() - 1, 0), reg);
+                return reg;
+            }
+        }
+        for (Map.Entry<Register, String> entry : tempMap.entrySet()) {
+            if (entry.getValue() != null && entry.getValue().equals(value.getName())) {
+                reg = entry.getKey();
+                // tempPool.add(Math.max(tempPool.size() - 1, 0), reg);
+                return reg;
+            }
+        }
+        return null;
+    }
+
+    public void freeTemp(Register register) {
+        if (register.isTemp()) tempPool.add(Math.max(tempPool.size() - 1, 0), register);
     }
 }

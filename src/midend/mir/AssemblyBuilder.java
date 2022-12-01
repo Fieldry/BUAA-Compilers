@@ -12,6 +12,7 @@ import utils.inodelist.INode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Stack;
 
 public class AssemblyBuilder {
@@ -462,7 +463,7 @@ public class AssemblyBuilder {
     public Value visit(SysYPrintf node) {
         Object[] strings = Arrays.stream(node.getFormat().replace("\\n", "\n").split("%d"))
                 .map(s -> s.replace("\"", "")).toArray();
-        Object[] objects = node.getExps().stream().map(this::visit).toArray();
+        List<SysYExpression> exps = node.getExps();
         for (int i = 0, len = strings.length; i < len; i++) {
             for (char ch : ((String) strings[i]).toCharArray()) {
                 builder.createFuncCallInst("putch", new ArrayList<Value>() {{
@@ -472,7 +473,7 @@ public class AssemblyBuilder {
             if (i < len - 1) {
                 int finalI = i;
                 builder.createFuncCallInst("putint", new ArrayList<Value>() {{
-                    add((Value) objects[finalI]);
+                    add(visit(exps.get(finalI)));
                 }});
             }
         }
@@ -540,20 +541,27 @@ public class AssemblyBuilder {
     }
 
     public Value visit(SysYLVal node, boolean needPointer) {
-        if (node.getName().equals("qq"))
-            System.out.println("break");
         Value pointer = builder.getValueFromTable(node.getName());
         ArrayList<Value> indexes = new ArrayList<>();
+        boolean flag = true;
         if (node.getFirstExp() != null) {
             indexes.add(visit(node.getFirstExp()));
             if (node.getSecondExp() != null) indexes.add(visit(node.getSecondExp()));
         }
 
+        for (Value value : indexes) {
+            flag &= (value instanceof ConstantInt);
+        }
+
         if (pointer instanceof Initial) {
-            for (Value value : indexes) {
-                pointer = ((ArrayInitial) pointer).getInitValues().get(((ConstantInt) value).getValue());
+            if (flag) {
+                for (Value value : indexes) {
+                    pointer = ((ArrayInitial) pointer).getInitValues().get(((ConstantInt) value).getValue());
+                }
+                return ((ValueInitial) pointer).getValue();
+            } else {
+                pointer = builder.getValueFromTable("@" + node.getName());
             }
-            return ((ValueInitial) pointer).getValue();
         }
 
         Type innerType = ((PointerType) pointer.getType()).getInnerType();

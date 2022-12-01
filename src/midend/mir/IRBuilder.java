@@ -45,6 +45,8 @@ public class IRBuilder {
         name = "@" + name;
         Value value;
         if (isConst) {
+            value = new Value(new PointerType(type), name, ident);
+            curTable.addSymbol("@" + name, value);
             value = initial;
         } else {
             value = new Value(new PointerType(type), name, ident);

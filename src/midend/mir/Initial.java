@@ -83,7 +83,7 @@ public abstract class Initial extends Value {
         public String toMIPS(boolean needPrefix) {
             int size = 1;
             for (Integer i : ((ArrayType) type).getDims()) size *= i;
-            if (needPrefix) return ".space " + size;
+            if (needPrefix) return ".space " + size * 4;
             else return "" + size;
         }
     }

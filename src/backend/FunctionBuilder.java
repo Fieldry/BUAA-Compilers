@@ -69,13 +69,10 @@ public class FunctionBuilder {
         }
         return reg;
     }
-    private Register findOrAllocReg(Value value) {
+    private Register getRegForRight(Value value) {
         Register reg = findRegOrAddrForSym(value);
         if (reg != null) return reg;
         else return allocRegForSymOrInt(value);
-    }
-    private Register getRegForRight(Value value) {
-        return findOrAllocReg(value);
     }
     private Register getRegForLeft(Value value) {
         Register reg = regScheduler.find(value);
@@ -154,6 +151,11 @@ public class FunctionBuilder {
             stackMem.put(name, new BaseAddress(Register.R29, new ImmNum(total)));
         }
         saveSize = total;
+
+        for (Map.Entry<String, Address> entry : stackMem.entrySet()) {
+            System.out.println(entry.getKey() + " : " + entry.getValue());
+        }
+
         return curFunction;
     }
 
@@ -244,17 +246,19 @@ public class FunctionBuilder {
     private Pair<MIPSCode, MIPSCode> visit(ZExtInst inst) {
         Register from = getRegForRight(inst.getFrom());
         Register to = getRegForLeft(inst.getTo());
-        return Pair.of(new MoveCode(to, from), new NopCode());
+        MIPSCode code = new MoveCode(to, from);
+        // regScheduler.freeTemp(from);
+        return Pair.of(code, new NopCode());
     }
 
     private Pair<MIPSCode, MIPSCode> visit(MemoryInst inst) {
-        if (inst.getTo().getName() != null && inst.getTo().getName().equals("%26"))
-            System.out.println("break");
         Register from = getRegForRight(inst.getFrom());
         Register to = getRegForLeft(inst.getTo());
         assert from != null;
         assert to != null;
-        return Pair.of(new MoveCode(to, from), storeWord(to, inst.getTo()));
+        MIPSCode code = new MoveCode(to, from);
+        // regScheduler.freeTemp(from);
+        return Pair.of(code, storeWord(to, inst.getTo()));
 //        if (inst.getFlag() == 1) {
 //            /* 1 for load */
 //            Register from = findOrAllocReg(inst.getFrom());
@@ -316,6 +320,7 @@ public class FunctionBuilder {
                 else {
                     Register rt = getRegForRight(inst.getValue());
                     first = new MoveCode(Register.R2, rt);
+                    // regScheduler.freeTemp(rt);
                 }
                 curBBlock.addMipsCode(first);
             }
@@ -409,7 +414,7 @@ public class FunctionBuilder {
         Function function = inst.getFunction();
         switch (function.getName()) {
             case "@getint": {
-                Register reg = findOrAllocReg(inst.getResValue());
+                Register reg = getRegForRight(inst.getResValue());
                 curBBlock.addMipsCode(new LoadImmCode(Register.R2, ImmNum.GETINT));
                 curBBlock.addMipsCode(new SysCallCode());
                 curBBlock.addMipsCode(new MoveCode(reg, Register.R2));
@@ -425,6 +430,7 @@ public class FunctionBuilder {
                 curBBlock.addMipsCode(new LoadImmCode(Register.R2, ImmNum.PUTINT));
                 Register reg = getRegForRight(inst.getParams().get(0));
                 curBBlock.addMipsCode(new MoveCode(Register.R4, reg));
+                // regScheduler.freeTemp(reg);
                 curBBlock.addMipsCode(new SysCallCode());
                 return true;
             }
@@ -479,6 +485,10 @@ public class FunctionBuilder {
             if (value instanceof ConstantInt) {
                 address = paramPos.get(name + "_param" + i).getSecond();
                 reg = allocRegForSymOrInt(value);
+                curBBlock.addMipsCode(new StoreWordCode(reg, address));
+            } else if (findAddress(value) == null
+                && (reg = regScheduler.find(value)) != null) {
+                address = paramPos.get(value.getName()).getSecond();
                 curBBlock.addMipsCode(new StoreWordCode(reg, address));
             }
         }

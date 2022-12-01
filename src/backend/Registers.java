@@ -24,23 +24,24 @@ public class Registers {
 
         public String getName() { return name; }
 
+        public boolean isTemp() { return name.matches("\\$t[1-9]"); }
+
+        public boolean isGlobal() {
+            return name.matches("\\$s[0-7]") || name.matches("\\$k[0-1]") || name.equals("fp");
+        }
+
+        public boolean isParam() { return name.matches("\\$a[0-3]"); }
+
         @Override
         public String toString() { return name; }
     }
 
-    private final static ArrayList<Register> globalRegisters = new ArrayList<Register>(){{
-        for (Register register : Register.values())
-            if (register.name.matches("\\$s[0-7]"))
-                add(register);
-        add(Register.R26);
-        add(Register.R27);
-        add(Register.R30);
-    }};
+    private final static ArrayList<Register> globalRegisters = new ArrayList<Register>(){};
     private final static ArrayList<Register> tempRegisters = new ArrayList<Register>() {{
-        for (Register register : Register.values()) if (register.name.matches("\\$t[1-9]")) add(register);
+        for (Register register : Register.values()) if (register.isTemp() || register.isGlobal()) add(register);
     }};
     private final static ArrayList<Register> paramRegisters = new ArrayList<Register>() {{
-        for (Register register : Register.values()) if (register.name.matches("\\$a[0-3]")) add(register);
+        for (Register register : Register.values()) if (register.isParam()) add(register);
     }};
     public static ArrayList<Register> getGlobalRegisters() { return globalRegisters; }
     public static ArrayList<Register> getTempRegisters() { return tempRegisters; }
