@@ -3,6 +3,7 @@ package frontend;
 import frontend.token.Tokens;
 import frontend.exception.SysYException;
 import frontend.exception.SysYException.*;
+import frontend.token.Tokens.*;
 import utils.Reader;
 
 import java.util.ArrayList;
@@ -17,7 +18,7 @@ public class Tokenizer {
 
     private boolean commentsFlag = false;
     private int line = 0;
-    private Tokens.TokenKind tokenKind;
+    private TokenKind tokenKind;
 
     public Tokenizer(Tokens tokens, Reader reader, Scanner scanner) {
         this.tokens = tokens;
@@ -27,7 +28,7 @@ public class Tokenizer {
 
     /** Read frontend.token.
      */
-    public Tokens.Token readToken() {
+    public Token readToken() {
         reader.resetSp();
         while (true) {
             if (reader.isEnd()) {
@@ -55,7 +56,7 @@ public class Tokenizer {
                     reader.saveChar();
                     reader.readChar();
                 }
-                tokenKind = Tokens.TokenKind.INTC;
+                tokenKind = TokenKind.INTC;
                 break;
             } else if (reader.isDiv()) {
                 reader.readChar();
@@ -68,7 +69,7 @@ public class Tokenizer {
                     reader.readChar();
                 } else {
                     // A single division sign
-                    tokenKind = Tokens.TokenKind.DIV;
+                    tokenKind = TokenKind.DIV;
                     break;
                 }
             } else if (reader.isQuotes()) {
@@ -81,56 +82,56 @@ public class Tokenizer {
                 }
                 reader.saveChar();
                 reader.readChar();
-                tokenKind = Tokens.TokenKind.FORMATS;
+                tokenKind = TokenKind.FORMATS;
                 break;
             } else if (reader.isEqual()) {
                 reader.readChar();
                 if (reader.isEqual()) {
                     // Equals
-                    tokenKind = Tokens.TokenKind.EQL;
+                    tokenKind = TokenKind.EQL;
                     reader.readChar();
                 } else {
                     // Assignment
-                    tokenKind = Tokens.TokenKind.ASSIGN;
+                    tokenKind = TokenKind.ASSIGN;
                 }
                 break;
             } else if (reader.isLess()) {
                 reader.readChar();
                 if (reader.isEqual()) {
                     // Less Or Equals
-                    tokenKind = Tokens.TokenKind.LEQ;
+                    tokenKind = TokenKind.LEQ;
                     reader.readChar();
                 } else {
                     // Less
-                    tokenKind = Tokens.TokenKind.LSS;
+                    tokenKind = TokenKind.LSS;
                 }
                 break;
             } else if (reader.isGreater()) {
                 reader.readChar();
                 if (reader.isEqual()) {
                     // Greater Or Equals
-                    tokenKind = Tokens.TokenKind.GEQ;
+                    tokenKind = TokenKind.GEQ;
                     reader.readChar();
                 } else {
                     // Greater
-                    tokenKind = Tokens.TokenKind.GRE;
+                    tokenKind = TokenKind.GRE;
                 }
                 break;
             } else if (reader.isNot()) {
                 reader.readChar();
                 if (reader.isEqual()) {
                     // Not equals
-                    tokenKind = Tokens.TokenKind.NEQ;
+                    tokenKind = TokenKind.NEQ;
                     reader.readChar();
                 } else {
                     // Not
-                    tokenKind = Tokens.TokenKind.NOT;
+                    tokenKind = TokenKind.NOT;
                 }
                 break;
             } else if (reader.isAnd()) {
                 reader.readChar();
                 if (reader.isAnd()) {
-                    tokenKind = Tokens.TokenKind.AND;
+                    tokenKind = TokenKind.AND;
                     reader.readChar();
                 } else {
                     // Error
@@ -139,7 +140,7 @@ public class Tokenizer {
             } else if (reader.isOr()) {
                 reader.readChar();
                 if (reader.isOr()) {
-                    tokenKind = Tokens.TokenKind.OR;
+                    tokenKind = TokenKind.OR;
                     reader.readChar();
                 } else {
                     // Error
@@ -159,19 +160,19 @@ public class Tokenizer {
             }
         }
 
-        return new Tokens.Token(tokenKind);
+        return new Token(tokenKind);
     }
 
     public void tokenAnalyse() throws SysYException {
-        Tokens.Token token;
+        Token token;
         while (reader.readNextLine()) {
             line++;
             while ((token = readToken()) != null) {
                 token.setLine(line);
-                if (token.getTokenKind() == Tokens.TokenKind.IDENT || token.getTokenKind() == Tokens.TokenKind.FORMATS
-                        || token.getTokenKind() == Tokens.TokenKind.INTC) {
+                if (token.getTokenKind() == TokenKind.IDENT || token.getTokenKind() == TokenKind.FORMATS
+                        || token.getTokenKind() == TokenKind.INTC) {
                     token.setValue(reader.savedToken());
-                    if (token.getTokenKind() == Tokens.TokenKind.FORMATS) {
+                    if (token.getTokenKind() == TokenKind.FORMATS) {
                         String string = token.getValue();
                         for (int i = 1, size = string.length() - 1; i < size; i++) {
                             char c = string.charAt(i);

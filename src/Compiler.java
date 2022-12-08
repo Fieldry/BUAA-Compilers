@@ -1,4 +1,6 @@
 import backend.MIPSBuilder;
+import frontend.symbolTable.SymbolSysYTable;
+import frontend.tree.SysYTree;
 import midend.mir.AssemblyBuilder;
 import midend.mir.Module;
 import frontend.exception.SysYException;
@@ -9,6 +11,10 @@ import frontend.Scanner;
 import frontend.Tokenizer;
 import utils.Reader;
 import utils.Writer;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class Compiler {
     public static Reader reader;
@@ -27,6 +33,8 @@ public class Compiler {
         String input = "testfile.txt", output = "output.txt", error = "error.txt",
             llvm = "llvm_ir.txt", mips = "mips.txt";
         SysYCompilationUnit compUnit = null;
+
+        boolean errorHandle = true;
 
         reader = new Reader(input);
         writer = new Writer(output, error, llvm, mips);
@@ -47,27 +55,27 @@ public class Compiler {
             if (e.getKind() != SysYException.EKind.o) e.printStackTrace();
         }
 
-        /*
-        if (compUnit != null) {
-            try {
-                compUnit.check(new SymbolSysYTable(null), false);
-            } catch (Exception e) {
-                e.printStackTrace();
+
+        if (errorHandle) {
+            if (compUnit != null) {
+                try {
+                    compUnit.check(new SymbolSysYTable(null), false);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
+
+            List<SysYException> errors = new ArrayList<SysYException>() {{
+                addAll(tokenizer.errors);
+                addAll(parser.errors);
+                addAll(SysYTree.errors);
+                sort(Comparator.comparingInt(SysYException::getLine));
+            }};
+            writer.writeErrors(errors);
+        } else {
+            builder.generateLLVM(compUnit);
+            mipsBuilder.genModule();
         }
-
-        List<SysYException> errors = new ArrayList<SysYException>() {{
-            addAll(tokenizer.errors);
-            addAll(parser.errors);
-            addAll(SysYTree.errors);
-            sort(Comparator.comparingInt(SysYException::getLine));
-        }};
-        writer.writeErrors(errors);
-         */
-
-        builder.generateLLVM(compUnit);
-        mipsBuilder.genModule();
-
         writer.close();
     }
 }
