@@ -27,7 +27,7 @@ public class MIPSBuilder {
         writer.setMipsBw();
         writer.writeln(".data:");
         for (GlobalVariable value : mirModule.getGlobalList()) {
-            if (!value.isConst()) {
+            {
                 String name = value.getName().replace("@", "");
                 writer.write("\t" + name);
                 writer.writeln(": " + value.getInitValue().toMIPS(true));
