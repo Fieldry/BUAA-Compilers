@@ -62,16 +62,10 @@ public abstract class SysYTree {
 
     /** Variables declarations including const var and var. */
     public static class SysYDecl extends SysYBlockItem {
-        private final boolean isConst;
         private final List<SysYSymbol> defs;
 
         public SysYDecl(boolean isConst, List<SysYSymbol> defs) {
-            this.isConst = isConst;
             this.defs = defs;
-        }
-
-        public boolean isConst() {
-            return isConst;
         }
 
         public List<SysYSymbol> getDefs() {
@@ -98,8 +92,6 @@ public abstract class SysYTree {
         }
 
         protected SysYIdentifier ident;
-
-        public int getLine() { return ident.getLine(); }
 
         public String getName() { return ident.getValue(); }
 
@@ -163,16 +155,10 @@ public abstract class SysYTree {
     }
 
     public static class SysYInit extends SysYExpression {
-        private final boolean isConst;
         private final List<SysYExpression> expression;
 
         public SysYInit(boolean isConst, List<SysYExpression> expression) {
-            this.isConst = isConst;
             this.expression = expression;
-        }
-
-        public boolean isConst() {
-            return isConst;
         }
 
         public List<SysYExpression> getExpression() {
@@ -499,13 +485,20 @@ public abstract class SysYTree {
 
         @Override
         public SymbolSysYTable check(SymbolSysYTable table, boolean inLoop) {
-            if (!isEmpty) table = exp.check(table, inLoop);
+            if (!isEmpty) {
+                assert exp != null;
+                table = exp.check(table, inLoop);
+            }
             return table;
         }
 
         @Override
         public ReturnKind getReturnKind(SymbolSysYTable table) throws SysYException {
-            return isEmpty ? null : exp.getReturnKind(table);
+            if (isEmpty) return null;
+            else {
+                assert exp != null;
+                return exp.getReturnKind(table);
+            }
         }
     }
 
@@ -600,10 +593,6 @@ public abstract class SysYTree {
             this.dimensions = dimensions;
             this.firstExp = firstExp;
             this.secondExp = secondExp;
-        }
-
-        public int getDimensions() {
-            return dimensions;
         }
 
         public SysYExpression getFirstExp() {
