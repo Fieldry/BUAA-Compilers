@@ -357,7 +357,7 @@ public class FunctionBuilder {
         reg = getRegForRight(index);
         if (innerType.isArrayType()) {
             curBBlock.addMipsCode(new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.MUL),
-                    reg, reg, new ImmNum(((ArrayType) innerType).getSize() * 4)));
+                    reg, reg, new ImmNum(((ArrayType) innerType).getSize() * 4L)));
         } else {
             curBBlock.addMipsCode(new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.MUL),
                     reg, reg, ImmNum.FourImm));

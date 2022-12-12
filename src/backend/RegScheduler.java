@@ -53,6 +53,10 @@ public class RegScheduler {
         return tempPool.remove(0);
     }
 
+    public void freeTemp(Register register) {
+        if (register.isTemp()) tempPool.add(register);
+    }
+
 //    public Register allocParam(Value value) {
 //        if (!paramPool.isEmpty()) {
 //            Register r = paramPool.remove(0);
@@ -84,9 +88,5 @@ public class RegScheduler {
             }
         }
         return null;
-    }
-
-    public void freeTemp(Register register) {
-        if (register.isTemp()) tempPool.add(Math.max(tempPool.size() - 1, 0), register);
     }
 }

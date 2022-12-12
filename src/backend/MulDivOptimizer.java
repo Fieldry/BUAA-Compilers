@@ -69,10 +69,14 @@ public class MulDivOptimizer {
     public static void optDiv(BinaryRegImmCode inst) {
         long value = inst.getImm().getValue();
         Register rt = inst.getRt(), rs = inst.getRs();
-        // ImmNum imm = inst.getImm();
+        ImmNum imm = inst.getImm();
         assert value != 0;
         {
             int lo = crz(value);
+            if (inst.isMod()) {
+                inst.insertAfter(BinaryRegRegCode.subCode(rt, rs, Register.R1));
+                inst.insertAfter(BinaryRegImmCode.mulCode(Register.R1, rt, imm));
+            }
             if (value == (1L << lo)) {
                 if(lo > 0) inst.insertAfter(BinaryRegImmCode.srlCode(rt, rs, new ImmNum(lo)));
                 else inst.insertAfter(new MoveCode(rt, rs));

@@ -48,6 +48,7 @@ public abstract class MIPSCode extends INode {
         }
         public boolean isMul() { return op.equals(Op.MUL); }
         public boolean isDiv() { return op.equals(Op.DIV); }
+        public boolean isMod() { return op.equals(Op.REM); }
         public Register getRs() { return rs; }
         public Register getRt() { return rt; }
         public ImmNum getImm() { return imm; }
