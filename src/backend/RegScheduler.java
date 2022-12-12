@@ -54,7 +54,16 @@ public class RegScheduler {
     }
 
     public void freeTemp(Register register) {
-        if (register.isTemp()) tempPool.add(register);
+        if (register.isTemp()) {
+            tempPool.add(register);
+            tempMap.remove(register);
+        }
+    }
+
+    public void freeAllTemp() {
+        tempPool.clear();
+        tempPool.addAll(Registers.getTempRegisters());
+        for (Register register : Registers.getTempRegisters()) tempMap.remove(register);
     }
 
 //    public Register allocParam(Value value) {

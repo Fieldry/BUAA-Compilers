@@ -69,21 +69,25 @@ public class FunctionBuilder {
         }
         return reg;
     }
+    /** Find or alloc temp Register for Right value.*/
     private Register getRegForRight(Value value) {
         Register reg = findRegOrAddrForSym(value);
         if (reg != null) return reg;
         else return allocRegForSymOrInt(value);
     }
+    /** Find or alloc Register for Left value.*/
     private Register getRegForLeft(Value value) {
         Register reg = regScheduler.find(value);
         if (reg == null) return regScheduler.allocTemp(value);
         else return reg;
     }
+    /** Find Address for value in stack memory or global memory.*/
     private Address findAddress(Value value) {
         String name = value.getName();
         if (stackMem.containsKey(name)) return stackMem.get(name);
         else return globalMem.getOrDefault(name, null);
     }
+    /** Store value into the memory. */
     private MIPSCode storeWord(Register res, Value value) {
         Address address = null;
         if (paramPos.containsKey(value.getName())) address = paramPos.get(value.getName()).getSecond();
@@ -95,10 +99,10 @@ public class FunctionBuilder {
     public Function firstPass(Module lirModule) {
         curFunction = new Function(mirFunction.getType(), mirFunction.getName().replace("@", ""), lirModule);
         HashMap<String, Integer> map = new HashMap<>();
-        int total;
+        int total = 0;
         /* params */
-        if (isMain) total = 0;
-        else total = mirFunction.getParams().size() * 4;
+        if (isMain) stackSize = 0;
+        else stackSize = mirFunction.getParams().size() * 4;
         // total = Math.max(0, mirFunction.getParams().size() - 4) * 4;
 
         /* local var */
@@ -107,15 +111,20 @@ public class FunctionBuilder {
                 if (inst instanceof AllocInst) {
                     int size = visit((AllocInst) inst);
                     if (size != 0) {
-                        total += size;
+                        stackSize += size;
                         map.put(((AllocInst) inst).getValue().getName(), size);
-                    } else total += 4;
+                    } else stackSize += 4;
+                } else if (inst instanceof BinaryRegImmCode || inst instanceof BinaryRegRegCode) {
+                    stackSize += 4;
+                } else if (inst instanceof GEPInst) {
+                    stackSize += 4;
                 } else if (inst instanceof FuncCallInst) {
                     ArrayList<Value> params = ((FuncCallInst) inst).getParams();
                     Value value;
                     Address address;
                     String name = ((FuncCallInst) inst).getFunction().getName().replace("@", "");
                     if (isLibFunction(name)) continue;
+                    if (((FuncCallInst) inst).getResValue() != null) stackSize += 4;
                     int pos = 0;
                     // regScheduler.clearParam();
                     for (int i = 0, len = params.size(); i < len; i++) {
@@ -133,27 +142,21 @@ public class FunctionBuilder {
             }
         }
 
-        /* temp registers */
-        total += Registers.getTempRegisters().size() * 4;
-        /* ra register */
-        total += 4;
-
-        stackSize = total;
+        /* Save temp registers. */
+        saveSize += Registers.getTempRegisters().size() * 4;
+        /* Save ra register. */
+        saveSize += 4;
+        stackSize += saveSize;
 
         for (Value value : mirFunction.getParams()) {
             total -= 4;
-            stackMem.put(value.getName(), new BaseAddress(Register.R29, new ImmNum(total)));
+            stackMem.put(value.getName(), new BaseAddress(Register.R30, new ImmNum(total)));
         }
         for (Map.Entry<String, Integer> entry : map.entrySet()) {
             String name = entry.getKey();
             Integer size = entry.getValue();
             total -= size;
-            stackMem.put(name, new BaseAddress(Register.R29, new ImmNum(total)));
-        }
-        saveSize = total;
-
-        for (Map.Entry<String, Address> entry : stackMem.entrySet()) {
-            System.out.println(entry.getKey() + " : " + entry.getValue());
+            stackMem.put(name, new BaseAddress(Register.R30, new ImmNum(total)));
         }
 
         return curFunction;
@@ -183,9 +186,8 @@ public class FunctionBuilder {
             curBBlock = new BasicBlock(curFunction.getName() + "_" + block.getName(), curFunction);
             curFunction.addBBlock(curBBlock);
             if (mirFunction.getBBlockList().getBegin().equals(block) && stackSize > 0) {
-                curBBlock.addMipsCode(new BinaryRegImmCode(
-                        BinaryRegImmCode.toOp(BinaryOp.SUB), Register.R29, Register.R29, new ImmNum(stackSize)
-                ));
+                curBBlock.addMipsCode(new MoveCode(Register.R30, Register.R29));
+                curBBlock.addMipsCode(BinaryRegImmCode.subCode(Register.R29, Register.R29, new ImmNum(stackSize)));
             }
             genBBlock(block);
         }
@@ -324,9 +326,7 @@ public class FunctionBuilder {
                 }
                 curBBlock.addMipsCode(first);
             }
-            curBBlock.addMipsCode(new BinaryRegImmCode(
-                    BinaryRegImmCode.toOp(BinaryOp.ADD), Register.R29, Register.R29, new ImmNum(stackSize)
-            ));
+            curBBlock.addMipsCode(BinaryRegImmCode.addCode(Register.R29, Register.R29, new ImmNum(stackSize)));
             return Pair.of(new NopCode(), new JumpRegCode(Register.R31));
         }
     }
@@ -493,9 +493,9 @@ public class FunctionBuilder {
             }
         }
 
-        JumpLinkCode jal = new JumpLinkCode(
-                new Label("Function_" + inst.getFunction().getName().replace("@", "")));
-        curBBlock.addMipsCode(jal);
+        curBBlock.addMipsCode(new JumpLinkCode(
+                new Label("Function_" + inst.getFunction().getName().replace("@", ""))));
+        curBBlock.addMipsCode(BinaryRegImmCode.addCode(Register.R30, Register.R30, new ImmNum(stackSize)));
 
         // TODO: Restore global registers and ra.
         if(!isMain)

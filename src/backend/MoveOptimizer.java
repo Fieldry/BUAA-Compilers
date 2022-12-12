@@ -13,7 +13,7 @@ public class MoveOptimizer {
                 for (INode iNode : block.getInstList()) {
                     if (iNode instanceof MoveCode) {
                         MIPSCode inst = (MIPSCode) iNode.getPrev();
-                        if (inst.optMove(((MoveCode) iNode).getRt(), ((MoveCode) iNode).getRs())) {
+                        if (inst != null && inst.optMove(((MoveCode) iNode).getRt(), ((MoveCode) iNode).getRs())) {
                             iNode.remove();
                         }
                     }

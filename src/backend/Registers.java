@@ -1,9 +1,6 @@
 package backend;
 
-import midend.mir.Value;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class Registers {
     public enum Register {
@@ -27,8 +24,7 @@ public class Registers {
         public boolean isTemp() { return name.matches("\\$t[0-9]"); }   // 10
 
         public boolean isGlobal() {
-            return name.matches("\\$s[0-7]") || name.matches("\\$k[0-1]")
-                    || name.equals("fp") || name.equals("v1"); // 12
+            return name.matches("\\$s[0-7]") || name.matches("\\$k[0-1]") || name.equals("v1"); // 11
         }
 
         public boolean isParam() { return name.matches("\\$a[1-3]"); }  // 3

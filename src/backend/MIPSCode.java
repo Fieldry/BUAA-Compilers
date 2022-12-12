@@ -19,7 +19,13 @@ public abstract class MIPSCode extends INode {
             return new BinaryRegImmCode(Op.SGE, rt, rs, imm);
         }
         public static BinaryRegImmCode mulCode(Register rt, Register rs, ImmNum imm) {
-            return new BinaryRegImmCode(BinaryRegImmCode.Op.MUL, rt, rs, imm);
+            return new BinaryRegImmCode(Op.MUL, rt, rs, imm);
+        }
+        public static BinaryRegImmCode subCode(Register rt, Register rs, ImmNum imm) {
+            return new BinaryRegImmCode(Op.SUBIU, rt, rs, imm);
+        }
+        public static BinaryRegImmCode addCode(Register rt, Register rs, ImmNum imm) {
+            return new BinaryRegImmCode(Op.ADDIU, rt, rs, imm);
         }
         private enum Op {
             MUL, DIV, REM, ADDIU, SUBIU,
