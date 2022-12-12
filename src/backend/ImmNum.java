@@ -19,11 +19,11 @@ public class ImmNum {
         return new ImmNum(from.getValue());
     }
 
-    private final int value;
+    private final long value;
 
-    public ImmNum(int value) { this.value = value; }
+    public ImmNum(long value) { this.value = value; }
 
-    public int getValue() { return value; }
+    public long getValue() { return value; }
 
     @Override
     public String toString() {

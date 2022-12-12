@@ -3,6 +3,7 @@ package midend.mir;
 import frontend.token.Tokens;
 import frontend.tree.SysYTree;
 import frontend.tree.SysYTree.*;
+import midend.JumpOptimizer;
 import midend.mir.Instruction.*;
 import midend.mir.LoopRecord.Pair;
 import midend.mir.Type.*;
@@ -29,19 +30,24 @@ public class AssemblyBuilder {
      */
     private BasicBlock curBBlock;
     private boolean inGlobal;
-    private GEPInst secondGet = null;
 
-    public AssemblyBuilder(Writer writer, Module module) {
+    private final int optFormat;
+    public static int JUMPOPT = 0x0001;
+
+    public AssemblyBuilder(Writer writer, Module module, int mirOptFormat) {
         this.writer = writer;
         this.module = module;
+        optFormat = mirOptFormat;
     }
 
     public void generateLLVM(SysYCompilationUnit node) {
-        boolean debug = false;
-        if (debug) writer.setStdOut();
-        else writer.setLlvmBw();
+        writer.setLlvmBw();
         declareLibFunc();
         visit(node);
+
+        if (optFormat > 0) {
+            if ((optFormat & JUMPOPT) > 0) JumpOptimizer.optimize(module);
+        }
         if (!module.getGlobalList().isEmpty()) {
             for (GlobalVariable var : module.getGlobalList()) {
                 writer.writeln(var.toString());

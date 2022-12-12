@@ -24,13 +24,14 @@ public class Registers {
 
         public String getName() { return name; }
 
-        public boolean isTemp() { return name.matches("\\$t[0-9]"); }
+        public boolean isTemp() { return name.matches("\\$t[0-9]"); }   // 10
 
         public boolean isGlobal() {
-            return name.matches("\\$s[0-7]") || name.matches("\\$k[0-1]") || name.equals("fp");
+            return name.matches("\\$s[0-7]") || name.matches("\\$k[0-1]")
+                    || name.equals("fp") || name.equals("v1"); // 12
         }
 
-        public boolean isParam() { return name.matches("\\$a[1-3]"); }
+        public boolean isParam() { return name.matches("\\$a[1-3]"); }  // 3
 
         @Override
         public String toString() { return name; }

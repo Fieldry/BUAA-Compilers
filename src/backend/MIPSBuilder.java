@@ -18,21 +18,24 @@ public class MIPSBuilder {
     private final ArrayList<FunctionBuilder> functionBuilders = new ArrayList<>();
     private final LinkedHashMap<String, Address> globalMem = new LinkedHashMap<>();
 
-    public MIPSBuilder(Writer writer, Module module) {
+    private final int optFormat;
+    public static int MULDIVOPT = 0x0001;
+    public static int MOVEOPT = 0x0010;
+
+    public MIPSBuilder(Writer writer, Module module, int lirOptFormat) {
         mirModule = module;
         this.writer = writer;
+        optFormat = lirOptFormat;
     }
 
     public void genModule() {
         writer.setMipsBw();
         writer.writeln(".data:");
         for (GlobalVariable value : mirModule.getGlobalList()) {
-            {
-                String name = value.getName().replace("@", "");
-                writer.write("\t" + name);
-                writer.writeln(": " + value.getInitValue().toMIPS(true));
-                globalMem.put(value.getName(), new LabelAddress(new Label(name), Registers.Register.R0));
-            }
+            String name = value.getName().replace("@", "");
+            writer.write("\t" + name);
+            writer.writeln(": " + value.getInitValue().toMIPS(true));
+            globalMem.put(value.getName(), new LabelAddress(new Label(name), Registers.Register.R0));
         }
 
         writer.writeln("");
@@ -48,6 +51,19 @@ public class MIPSBuilder {
         }
         for (FunctionBuilder functionBuilder : functionBuilders) {
             functionBuilder.secondPass();
+        }
+
+        for (Function function : lirModule.getFunctionList()) {
+            for (BasicBlock block : function.getBBlockList()) {
+                for (INode iNode : block.getInstList()) {
+                    if (iNode instanceof NopCode) iNode.remove();
+                }
+            }
+        }
+
+        if (optFormat > 0) {
+            if ((optFormat & MULDIVOPT) > 0) MulDivOptimizer.optimize(lirModule);
+            if ((optFormat & MOVEOPT) > 0) MoveOptimizer.optimize(lirModule);
         }
 
         for (Function function : lirModule.getFunctionList()) {

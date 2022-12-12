@@ -28,10 +28,13 @@ public class Compiler {
             llvm = "llvm_ir.txt", mips = "mips.txt";
         SysYCompilationUnit compUnit = null;
 
+        int mirOptFormat = AssemblyBuilder.JUMPOPT;
+        int lirOptFormat = MIPSBuilder.MULDIVOPT | MIPSBuilder.MOVEOPT;
+
         reader = new Reader(input);
         writer = new Writer(output, error, llvm, mips);
-        builder = new AssemblyBuilder(writer, module);
-        mipsBuilder = new MIPSBuilder(writer, module);
+        builder = new AssemblyBuilder(writer, module, mirOptFormat);
+        mipsBuilder = new MIPSBuilder(writer, module, lirOptFormat);
 
         tokenizer = new Tokenizer(tokens, reader, scanner);
         try {
