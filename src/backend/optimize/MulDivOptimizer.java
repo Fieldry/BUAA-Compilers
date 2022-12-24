@@ -1,5 +1,6 @@
-package backend;
+package backend.optimize;
 
+import backend.ImmNum;
 import backend.MIPSCode.*;
 import midend.mir.BasicBlock;
 import midend.mir.Function;

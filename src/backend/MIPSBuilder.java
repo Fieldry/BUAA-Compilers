@@ -2,6 +2,8 @@ package backend;
 
 import java.util.*;
 
+import backend.optimize.MoveOptimizer;
+import backend.optimize.MulDivOptimizer;
 import midend.mir.*;
 import midend.mir.Module;
 import backend.MIPSCode.*;
