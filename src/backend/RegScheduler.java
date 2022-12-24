@@ -13,6 +13,10 @@ public class RegScheduler {
     // private final ArrayList<Register> paramPool = new ArrayList<>(Registers.getParamRegisters());
     private final LinkedHashMap<Register, String> tempMap = new LinkedHashMap<>();
     private final LinkedHashMap<Register, String> globalMap = new LinkedHashMap<>();
+    private final FunctionBuilder functionBuilder;
+    public RegScheduler(FunctionBuilder builder) {
+        functionBuilder = builder;
+    }
 
     public Register allocGlobal(Value value) {
         if (!globalPool.isEmpty()) {
@@ -31,7 +35,7 @@ public class RegScheduler {
         if (!tempPool.isEmpty()) {
             r = tempPool.remove(0);
         } else {
-            r = overflowTemp(value);
+            r = overflowTemp();
         }
         tempMap.put(r, value.getName());
         return r;
@@ -42,15 +46,24 @@ public class RegScheduler {
         if (!tempPool.isEmpty()) {
             r = tempPool.remove(0);
         } else {
-            r = overflowTemp(null);
+            r = overflowTemp();
         }
         tempMap.put(r, null);
         return r;
     }
 
-    public Register overflowTemp(Value value) {
-        tempPool.addAll(Registers.getTempRegisters());
-        return tempPool.remove(0);
+    public Register overflowTemp() {
+        Register r = null;
+        for (Register register : tempMap.keySet()) {
+            if (r == null) r = register;
+            if (tempMap.get(register) == null) {
+                return register;
+            }
+        }
+        functionBuilder.saveOverFlowTemp(r, tempMap.remove(r));
+        return r;
+        // tempPool.addAll(Registers.getTempRegisters());
+        // return tempPool.remove(0);
     }
 
     public void freeTemp(Register register) {
@@ -63,7 +76,8 @@ public class RegScheduler {
     public void freeAllTemp() {
         tempPool.clear();
         tempPool.addAll(Registers.getTempRegisters());
-        for (Register register : Registers.getTempRegisters()) tempMap.remove(register);
+        tempMap.clear();
+        functionBuilder.freeOverFlowTempInMem();
     }
 
 //    public Register allocParam(Value value) {

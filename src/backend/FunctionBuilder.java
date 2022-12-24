@@ -17,20 +17,28 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class FunctionBuilder {
-    private final RegScheduler regScheduler = new RegScheduler();
+    private final RegScheduler regScheduler;
     private final LinkedHashMap<String, Address> globalMem;
     /**
+     * -------------- 0
      * params
      * local var
-     * temp registers
+     * -------------- temp pointer (< 0)
+     * temp register
+     * save temp registers and ra(context)
+     * -------------- stack pointer
      */
     private final LinkedHashMap<String, Address> stackMem = new LinkedHashMap<>();
     /**
      * Parse parameters.
      */
     private final LinkedHashMap<String, Pair<Register, Address>> paramPos;
-
+    /** All used stack memory in this function. */
     private int stackSize;
+    /** Used to save temp register when overFlow, every time sub 4. */
+    private int tempStartPointer;
+    private int tempPointer;
+    /** Used stack memory to save context, the same to every function. */
     private int saveSize;
     private final boolean isMain;
     private final Function mirFunction;
@@ -42,6 +50,7 @@ public class FunctionBuilder {
         this.mirFunction = mirFunction;
         this.isMain = isMain;
         this.globalMem = globalMem;
+        regScheduler = new RegScheduler(this);
     }
     private boolean isLibFunction(String name) {
         if (name.contains("@")) name = name.replace("@", "");
@@ -92,14 +101,40 @@ public class FunctionBuilder {
         Address address = null;
         if (paramPos.containsKey(value.getName())) address = paramPos.get(value.getName()).getSecond();
         if (address == null) address = findAddress(value);
-        if (address != null) return new StoreWordCode(res, address);
+        if (address != null) return genSWCode(res, address);
         else return new NopCode();
     }
+    /** Store a temp register into stack. */
+    public void saveOverFlowTemp(Register register, String value) {
+        tempPointer -= 4;
+        if (stackSize + tempPointer < saveSize) {
+            System.out.println("G");
+        };
+        BaseAddress address = new BaseAddress(Register.R30, new ImmNum(tempPointer));
+        stackMem.put(value, address);
+        curBBlock.addMipsCode(new StoreWordCode(register, address));
+    }
+    public void freeOverFlowTempInMem() { tempPointer = tempStartPointer; }
+
+    // ----------------------------------------------------------------------
+
+    private StoreWordCode genSWCode(Register reg, Address address) {
+        StoreWordCode code = new StoreWordCode(reg, address);
+        regScheduler.freeTemp(reg);
+        return code;
+    }
+    /** generate a move code and free from register. */
+    private MoveCode genMoveCode(Register rt, Register rs) {
+        MoveCode code = new MoveCode(rt, rs);
+        regScheduler.freeTemp(rs);
+        return code;
+    }
+
+    // ----------------------------------------------------------------------
 
     public Function firstPass(Module lirModule) {
         curFunction = new Function(mirFunction.getType(), mirFunction.getName().replace("@", ""), lirModule);
         HashMap<String, Integer> map = new HashMap<>();
-        int total = 0;
         /* params */
         if (isMain) stackSize = 0;
         else stackSize = mirFunction.getParams().size() * 4;
@@ -115,9 +150,9 @@ public class FunctionBuilder {
                         map.put(((AllocInst) inst).getValue().getName(), size);
                     } else stackSize += 4;
                 } else if (inst instanceof BinaryRegImmCode || inst instanceof BinaryRegRegCode) {
-                    stackSize += 4;
+                    stackSize += 3 * 4;
                 } else if (inst instanceof GEPInst) {
-                    stackSize += 4;
+                    stackSize += 2 * 4;
                 } else if (inst instanceof FuncCallInst) {
                     ArrayList<Value> params = ((FuncCallInst) inst).getParams();
                     Value value;
@@ -148,16 +183,19 @@ public class FunctionBuilder {
         saveSize += 4;
         stackSize += saveSize;
 
+        /* Save parameters in stack.*/
         for (Value value : mirFunction.getParams()) {
-            total -= 4;
-            stackMem.put(value.getName(), new BaseAddress(Register.R30, new ImmNum(total)));
+            tempPointer -= 4;
+            stackMem.put(value.getName(), new BaseAddress(Register.R30, new ImmNum(tempPointer)));
         }
+        /* Save local parameters. */
         for (Map.Entry<String, Integer> entry : map.entrySet()) {
             String name = entry.getKey();
             Integer size = entry.getValue();
-            total -= size;
-            stackMem.put(name, new BaseAddress(Register.R30, new ImmNum(total)));
+            tempPointer -= size;
+            stackMem.put(name, new BaseAddress(Register.R30, new ImmNum(tempPointer)));
         }
+        tempStartPointer = tempPointer;
 
         return curFunction;
     }
@@ -185,6 +223,7 @@ public class FunctionBuilder {
         for (BasicBlock block : mirFunction.getBBlockList()) {
             curBBlock = new BasicBlock(curFunction.getName() + "_" + block.getName(), curFunction);
             curFunction.addBBlock(curBBlock);
+            regScheduler.freeAllTemp();
             if (mirFunction.getBBlockList().getBegin().equals(block) && stackSize > 0) {
                 curBBlock.addMipsCode(new MoveCode(Register.R30, Register.R29));
                 curBBlock.addMipsCode(BinaryRegImmCode.subCode(Register.R29, Register.R29, new ImmNum(stackSize)));
@@ -242,14 +281,15 @@ public class FunctionBuilder {
             r = getRegForRight(rValue);
             code = new BinaryRegRegCode(BinaryRegRegCode.toOp(inst.getOp()), res, l, (Register) r);
         }
+        regScheduler.freeTemp(l);
+        if(r instanceof Register) regScheduler.freeTemp((Register) r);
         return Pair.of(code, storeWord(res, inst.getResValue()));
     }
 
     private Pair<MIPSCode, MIPSCode> visit(ZExtInst inst) {
         Register from = getRegForRight(inst.getFrom());
         Register to = getRegForLeft(inst.getTo());
-        MIPSCode code = new MoveCode(to, from);
-        // regScheduler.freeTemp(from);
+        MIPSCode code = genMoveCode(to, from);
         return Pair.of(code, new NopCode());
     }
 
@@ -258,8 +298,8 @@ public class FunctionBuilder {
         Register to = getRegForLeft(inst.getTo());
         assert from != null;
         assert to != null;
-        MIPSCode code = new MoveCode(to, from);
-        // regScheduler.freeTemp(from);
+        // TODO: Free from.
+        MIPSCode code = genMoveCode(to, from);
         return Pair.of(code, storeWord(to, inst.getTo()));
 //        if (inst.getFlag() == 1) {
 //            /* 1 for load */
@@ -321,8 +361,7 @@ public class FunctionBuilder {
                     first = new LoadImmCode(Register.R2, ImmNum.toImmNum(inst.getValue()));
                 else {
                     Register rt = getRegForRight(inst.getValue());
-                    first = new MoveCode(Register.R2, rt);
-                    // regScheduler.freeTemp(rt);
+                    first = genMoveCode(Register.R2, rt);
                 }
                 curBBlock.addMipsCode(first);
             }
@@ -356,13 +395,11 @@ public class FunctionBuilder {
 //            }
         reg = getRegForRight(index);
         if (innerType.isArrayType()) {
-            curBBlock.addMipsCode(new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.MUL),
+            curBBlock.addMipsCode(BinaryRegImmCode.mulCode(
                     reg, reg, new ImmNum(((ArrayType) innerType).getSize() * 4L)));
         } else {
-            curBBlock.addMipsCode(new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.MUL),
-                    reg, reg, ImmNum.FourImm));
+            curBBlock.addMipsCode(BinaryRegImmCode.sllCode(reg, reg, new ImmNum(2)));
         }
-        // System.out.println(inst + " : " + address);
         if (address instanceof BaseAddress) {
             /* local array */
 //                if (index instanceof ConstantInt) {
@@ -371,22 +408,16 @@ public class FunctionBuilder {
 //                    curBBlock.addMipsCode(new BinaryRegRegCode(BinaryRegRegCode.toOp(BinaryOp.ADD), reg, ((BaseAddress) address).getReg(), reg));
 //                    newAddress = new BaseAddress(reg, ((BaseAddress) address).getImm());
 //                }
-            curBBlock.addMipsCode(
-                    new BinaryRegRegCode(BinaryRegRegCode.toOp(BinaryOp.ADD), reg,
-                            ((BaseAddress) address).getReg(), reg));
+            curBBlock.addMipsCode(BinaryRegRegCode.addCode(reg, ((BaseAddress) address).getReg(), reg));
             newAddress = new BaseAddress(reg, ((BaseAddress) address).getImm());
         } else if (address instanceof LabelAddress){
             /* global array */
-            curBBlock.addMipsCode(
-                    new BinaryRegRegCode(BinaryRegRegCode.toOp(BinaryOp.ADD), reg,
-                            ((LabelAddress) address).getReg(), reg));
+            curBBlock.addMipsCode(BinaryRegRegCode.addCode(reg, ((LabelAddress) address).getReg(), reg));
             newAddress = new LabelAddress(((LabelAddress) address).getLabel(), reg);
         } else {
             assert address == null;
             Register temp = getRegForRight(from);
-            curBBlock.addMipsCode(
-                    new BinaryRegRegCode(BinaryRegRegCode.toOp(BinaryOp.ADD), temp,
-                            temp, reg));
+            curBBlock.addMipsCode(BinaryRegRegCode.addCode(temp, temp, reg));
             newAddress = new BaseAddress(temp, ImmNum.ZeroImm);
         }
         stackMem.put(to.getName(), newAddress);
@@ -400,13 +431,12 @@ public class FunctionBuilder {
         if (addr instanceof BaseAddress) {
             Register reg = ((BaseAddress) addr).getReg();
             ImmNum imm = ((BaseAddress) addr).getImm();
-            curBBlock.addMipsCode(new BinaryRegImmCode(BinaryRegImmCode.toOp(BinaryOp.ADD), reg,
-                    reg, imm));
-            curBBlock.addMipsCode(new StoreWordCode(reg, address));
+            curBBlock.addMipsCode(BinaryRegImmCode.addCode(reg, reg, imm));
+            curBBlock.addMipsCode(genSWCode(reg, address));
         } else {
             Register temp = regScheduler.allocTemp();
             curBBlock.addMipsCode(new LoadAddressCode(temp, addr));
-            curBBlock.addMipsCode(new StoreWordCode(temp, address));
+            curBBlock.addMipsCode(genSWCode(temp, address));
         }
     }
 
@@ -429,8 +459,7 @@ public class FunctionBuilder {
             case "@putint": {
                 curBBlock.addMipsCode(new LoadImmCode(Register.R2, ImmNum.PUTINT));
                 Register reg = getRegForRight(inst.getParams().get(0));
-                curBBlock.addMipsCode(new MoveCode(Register.R4, reg));
-                // regScheduler.freeTemp(reg);
+                curBBlock.addMipsCode(genMoveCode(Register.R4, reg));
                 curBBlock.addMipsCode(new SysCallCode());
                 return true;
             }
@@ -485,11 +514,11 @@ public class FunctionBuilder {
             if (value instanceof ConstantInt) {
                 address = paramPos.get(name + "_param" + i).getSecond();
                 reg = allocRegForSymOrInt(value);
-                curBBlock.addMipsCode(new StoreWordCode(reg, address));
+                curBBlock.addMipsCode(genSWCode(reg, address));
             } else if (findAddress(value) == null
                 && (reg = regScheduler.find(value)) != null) {
                 address = paramPos.get(value.getName()).getSecond();
-                curBBlock.addMipsCode(new StoreWordCode(reg, address));
+                curBBlock.addMipsCode(genSWCode(reg, address));
             }
         }
 
